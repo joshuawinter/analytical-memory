@@ -1,0 +1,12 @@
+{
+  "domain": "order_to_cash_fulfillment",
+  "question": "Why did on-time-in-full fulfillment decline in February 2026?",
+  "known_cause": "W03 stockouts caused the decline",
+  "expected_driver": "W03",
+  "metrics": [
+    "order volume",
+    "on-time-in-full rate",
+    "late shipments",
+    "stockout orders"
+  ]
+}

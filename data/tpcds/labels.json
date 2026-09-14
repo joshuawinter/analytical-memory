@@ -1,0 +1,12 @@
+{
+  "metric:5:avg": {
+    "resolution_id": "resolution:metric:5:avg:1",
+    "target_id": "metric:5:avg",
+    "decision": "APPROVE",
+    "rationale": "looks good",
+    "decided_by": "reviewer",
+    "decided_at": "2026-09-14 20:35:30.943242+00:00",
+    "valid_from": null,
+    "valid_to": null
+  }
+}

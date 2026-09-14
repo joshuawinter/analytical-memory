@@ -1,0 +1,101 @@
+i_category,i_class,i_brand,i_product_name,d_year,d_qoy,d_moy,s_store_id,sumsales,rk
+,,,,,,,,10466637.34,1
+Books,,,,,,,,1338941.21,1
+Books,arts,,,,,,,181077.26,6
+Books,arts,amalgmaxi #12,,,,,,181077.26,6
+Books,arts,amalgmaxi #12,antipri,,,,,99269.78,23
+Books,arts,amalgmaxi #12,antipri,2000,,,,99269.78,23
+Books,arts,amalgmaxi #12,antipri,2000,3,,,45532.09,53
+Books,arts,amalgmaxi #12,antipri,2000,3,9,,30406.69,70
+Books,arts,amalgmaxi #12,antipri,2000,3,9,AAAAAAAABAAAAAAA,30406.69,70
+Books,arts,amalgmaxi #12,antipri,2000,4,,,35160.83,64
+Books,arts,amalgmaxi #12,ationbarought,,,,,81807.48,40
+Books,arts,amalgmaxi #12,ationbarought,2000,,,,81807.48,40
+Books,arts,amalgmaxi #12,ationbarought,2000,4,,,35996.36,63
+Books,fiction,,,,,,,331519.18,2
+Books,fiction,scholarunivamalg #2,,,,,,86750.10,33
+Books,fiction,scholarunivamalg #2,ationn st,,,,,86750.10,33
+Books,fiction,scholarunivamalg #2,ationn st,2000,,,,86750.10,33
+Books,fiction,scholarunivamalg #2,ationn st,2000,3,,,26403.92,80
+Books,fiction,scholarunivamalg #2,ationn st,2000,4,,,38755.87,59
+Books,fiction,scholarunivamalg #8,,,,,,244769.08,4
+Books,fiction,scholarunivamalg #8,ationcally,,,,,141107.13,8
+Books,fiction,scholarunivamalg #8,ationcally,2000,,,,141107.13,8
+Books,fiction,scholarunivamalg #8,ationcally,2000,3,,,52463.45,49
+Books,fiction,scholarunivamalg #8,ationcally,2000,3,8,,27943.24,78
+Books,fiction,scholarunivamalg #8,ationcally,2000,3,8,AAAAAAAABAAAAAAA,27943.24,78
+Books,fiction,scholarunivamalg #8,ationcally,2000,4,,,70459.19,47
+Books,fiction,scholarunivamalg #8,ationcally,2000,4,11,,23613.62,86
+Books,fiction,scholarunivamalg #8,ationcally,2000,4,11,AAAAAAAABAAAAAAA,23613.62,86
+Books,fiction,scholarunivamalg #8,ationcally,2000,4,12,,29979.68,72
+Books,fiction,scholarunivamalg #8,ationcally,2000,4,12,AAAAAAAABAAAAAAA,29979.68,72
+Books,fiction,scholarunivamalg #8,n stpriought,,,,,103661.95,21
+Books,fiction,scholarunivamalg #8,n stpriought,2000,,,,103661.95,21
+Books,fiction,scholarunivamalg #8,n stpriought,2000,4,,,52119.42,50
+Books,fiction,scholarunivamalg #8,n stpriought,2000,4,12,,31580.58,68
+Books,fiction,scholarunivamalg #8,n stpriought,2000,4,12,AAAAAAAABAAAAAAA,31580.58,68
+Books,mystery,,,,,,,120430.08,17
+Books,mystery,corpunivamalg #9,,,,,,120430.08,17
+Books,mystery,corpunivamalg #9,esebarought,,,,,120430.08,17
+Books,mystery,corpunivamalg #9,esebarought,2000,,,,120430.08,17
+Books,mystery,corpunivamalg #9,esebarought,2000,3,,,32528.20,67
+Books,mystery,corpunivamalg #9,esebarought,2000,3,9,,24051.70,84
+Books,mystery,corpunivamalg #9,esebarought,2000,3,9,AAAAAAAABAAAAAAA,24051.70,84
+Books,mystery,corpunivamalg #9,esebarought,2000,4,,,69365.81,48
+Books,mystery,corpunivamalg #9,esebarought,2000,4,11,,29458.37,74
+Books,mystery,corpunivamalg #9,esebarought,2000,4,11,AAAAAAAABAAAAAAA,29458.37,74
+Books,mystery,corpunivamalg #9,esebarought,2000,4,12,,25723.92,81
+Books,mystery,corpunivamalg #9,esebarought,2000,4,12,AAAAAAAABAAAAAAA,25723.92,81
+Books,parenting,,,,,,,135834.05,10
+Books,parenting,corpmaxi #3,,,,,,135834.05,10
+Books,parenting,corpmaxi #3,ableableought,,,,,135834.05,10
+Books,parenting,corpmaxi #3,ableableought,2000,,,,135834.05,10
+Books,parenting,corpmaxi #3,ableableought,2000,1,,,22053.04,92
+Books,parenting,corpmaxi #3,ableableought,2000,2,,,22043.98,93
+Books,parenting,corpmaxi #3,ableableought,2000,3,,,45313.75,54
+Books,parenting,corpmaxi #3,ableableought,2000,3,9,,34100.46,65
+Books,parenting,corpmaxi #3,ableableought,2000,3,9,AAAAAAAABAAAAAAA,34100.46,65
+Books,parenting,corpmaxi #3,ableableought,2000,4,,,46423.28,52
+Books,parenting,corpmaxi #3,ableableought,2000,4,10,,21690.97,94
+Books,parenting,corpmaxi #3,ableableought,2000,4,10,AAAAAAAABAAAAAAA,21690.97,94
+Books,reference,,,,,,,82421.58,36
+Books,reference,brandmaxi #2,,,,,,82421.58,36
+Books,reference,brandmaxi #2,ationantiought,,,,,82421.58,36
+Books,reference,brandmaxi #2,ationantiought,2000,,,,82421.58,36
+Books,reference,brandmaxi #2,ationantiought,2000,3,,,22193.14,91
+Books,reference,brandmaxi #2,ationantiought,2000,4,,,37004.33,60
+Books,reference,brandmaxi #2,ationantiought,2000,4,11,,22351.65,89
+Books,reference,brandmaxi #2,ationantiought,2000,4,11,AAAAAAAABAAAAAAA,22351.65,89
+Books,self-help,,,,,,,311964.37,3
+Books,self-help,exportiunivamalg #2,,,,,,182999.68,5
+Books,self-help,exportiunivamalg #2,antieseought,,,,,88672.96,31
+Books,self-help,exportiunivamalg #2,antieseought,2000,,,,88672.96,31
+Books,self-help,exportiunivamalg #2,antieseought,2000,4,,,47127.60,51
+Books,self-help,exportiunivamalg #2,oughtableought,,,,,94326.72,29
+Books,self-help,exportiunivamalg #2,oughtableought,2000,,,,94326.72,29
+Books,self-help,exportiunivamalg #2,oughtableought,2000,3,,,40117.11,56
+Books,self-help,exportiunivamalg #2,oughtableought,2000,4,,,42931.82,55
+Books,self-help,exportiunivamalg #2,oughtableought,2000,4,11,,20694.18,96
+Books,self-help,exportiunivamalg #2,oughtableought,2000,4,11,AAAAAAAABAAAAAAA,20694.18,96
+Books,self-help,exportiunivamalg #6,,,,,,128964.69,14
+Books,self-help,exportiunivamalg #6,ationpriought,,,,,128964.69,14
+Books,self-help,exportiunivamalg #6,ationpriought,2000,,,,128964.69,14
+Books,self-help,exportiunivamalg #6,ationpriought,2000,1,,,25333.30,83
+Books,self-help,exportiunivamalg #6,ationpriought,2000,4,,,76901.06,46
+Books,self-help,exportiunivamalg #6,ationpriought,2000,4,11,,39105.68,57
+Books,self-help,exportiunivamalg #6,ationpriought,2000,4,11,AAAAAAAABAAAAAAA,39105.68,57
+Books,self-help,exportiunivamalg #6,ationpriought,2000,4,12,,28132.89,76
+Books,self-help,exportiunivamalg #6,ationpriought,2000,4,12,AAAAAAAABAAAAAAA,28132.89,76
+Books,sports,,,,,,,98703.81,25
+Books,sports,edu packunivamalg #12,,,,,,98703.81,25
+Books,sports,edu packunivamalg #12,oughtation,,,,,98703.81,25
+Books,sports,edu packunivamalg #12,oughtation,2000,,,,98703.81,25
+Books,sports,edu packunivamalg #12,oughtation,2000,2,,,22998.13,88
+Books,sports,edu packunivamalg #12,oughtation,2000,3,,,36241.67,62
+Books,sports,edu packunivamalg #12,oughtation,2000,4,,,20440.68,98
+Books,travel,,,,,,,76990.88,42
+Books,travel,univunivamalg #8,,,,,,76990.88,42
+Books,travel,univunivamalg #8,priese,,,,,76990.88,42
+Books,travel,univunivamalg #8,priese,2000,,,,76990.88,42
+Books,travel,univunivamalg #8,priese,2000,4,,,36542.64,61
+Books,travel,univunivamalg #8,priese,2000,4,12,,20160.11,99

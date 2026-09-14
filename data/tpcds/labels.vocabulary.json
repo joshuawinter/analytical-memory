@@ -1,0 +1,20 @@
+{
+  "metric:5:avg": {
+    "corrected_definition": "",
+    "aliases": [
+      "_col_0",
+      "agg1",
+      "avg1",
+      "csales",
+      "sales",
+      "ss_qty",
+      "ss_quantity",
+      "ssales",
+      "store_sales_quantity",
+      "store_sales_quantityave",
+      "store_sales_quantitycount",
+      "store_sales_quantitycov",
+      "store_sales_quantitystdev"
+    ]
+  }
+}

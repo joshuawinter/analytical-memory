@@ -1,0 +1,121 @@
+from pathlib import Path
+
+from semantic_induction.aggregate import aggregate
+from semantic_induction.extract import extract_corpus
+from semantic_induction.induce import classify_entities, detect_fanout_risk, induce
+from semantic_induction.ingest import ingest
+from semantic_induction.models import ColumnProfile, JoinEdge, Metric, TableProfile
+
+
+ROOT = Path(__file__).parents[1]
+
+
+def _corpus():
+    catalog, queries = ingest(ROOT / "data/tpch/ddl.sql", ROOT / "data/tpch/queries")
+    facts = extract_corpus(queries, catalog)
+    return catalog, facts, aggregate(facts)
+
+
+def test_induces_structural_entities_measures_and_dimensions():
+    catalog, facts, stats = _corpus()
+
+    layer = induce(stats, catalog, facts, min_support=2)
+
+    assert layer.entities["lineitem"].kind == "FACT"
+    assert layer.entities["nation"].kind in {"DIM", "CONFORMED_DIM"}
+    assert ("SUM", "lineitem.l_extendedprice") in layer.measures
+    assert "lineitem.l_returnflag" in layer.dimensions
+    assert all(metric.support >= 2 for metric in layer.metrics)
+
+
+def test_entity_classification_covers_catalog_tables():
+    catalog, _facts, stats = _corpus()
+
+    assert set(classify_entities(stats, catalog)) == set(catalog)
+
+
+def _profile(table: str, columns: dict[str, tuple[int, int, int]]) -> TableProfile:
+    """Build a TableProfile from {column: (row_count, null_count, distinct_count)}."""
+    row_count = next(iter(columns.values()))[0] if columns else 0
+    return TableProfile(
+        table=table,
+        row_count=row_count,
+        columns={
+            name: ColumnProfile(table, name, rows, nulls, distinct)
+            for name, (rows, nulls, distinct) in columns.items()
+        },
+    )
+
+
+def test_detect_fanout_risk_flags_a_correlated_join_flattened_to_inner_join():
+    # Mirrors the real q04-derived bug: COUNT(*) grouped by an orders
+    # column, joined to lineitem purely as a flattened EXISTS. orders is
+    # the grain table (o_orderkey unique); lineitem repeats l_orderkey
+    # many times per order and contributes nothing to grain or measure.
+    metric = Metric(
+        measure=("COUNT", "*"),
+        grain=frozenset({"orders.o_orderpriority"}),
+        join_path=(JoinEdge("lineitem.l_orderkey", "orders.o_orderkey", "INNER"),),
+        default_filters=(),
+        support=1,
+        seen_in=("q04",),
+    )
+    profiles = {
+        "orders": _profile("orders", {"o_orderkey": (100, 0, 100), "o_orderpriority": (100, 0, 5)}),
+        "lineitem": _profile("lineitem", {"l_orderkey": (400, 0, 100)}),
+    }
+
+    assert detect_fanout_risk(metric, profiles) is True
+
+
+def test_detect_fanout_risk_allows_a_chain_of_proper_foreign_key_lookups():
+    # Mirrors the real, verified-correct q11-derived metric: partsupp is
+    # the grain/measure table; supplier and nation are joined only through
+    # their own unique primary keys, so no partsupp row is ever
+    # duplicated regardless of how many suppliers or nations exist.
+    metric = Metric(
+        measure=("SUM", "partsupp.ps_supplycost"),
+        grain=frozenset({"partsupp.ps_partkey"}),
+        join_path=(
+            JoinEdge("partsupp.ps_suppkey", "supplier.s_suppkey", "INNER"),
+            JoinEdge("supplier.s_nationkey", "nation.n_nationkey", "INNER"),
+        ),
+        default_filters=(),
+        support=1,
+        seen_in=("q11",),
+    )
+    profiles = {
+        "partsupp": _profile(
+            "partsupp", {"ps_partkey": (400, 0, 100), "ps_suppkey": (400, 0, 100)}
+        ),
+        "supplier": _profile(
+            "supplier", {"s_suppkey": (100, 0, 100), "s_nationkey": (100, 0, 25)}
+        ),
+        "nation": _profile("nation", {"n_nationkey": (25, 0, 25)}),
+    }
+
+    assert detect_fanout_risk(metric, profiles) is False
+
+
+def test_induce_excludes_fanout_risky_metrics_only_when_profiles_are_supplied():
+    catalog, facts, stats = _corpus()
+
+    without_profiles = induce(stats, catalog, facts, min_support=1)
+    q04_metric = next(
+        metric
+        for metric in without_profiles.metrics
+        if metric.measure == ("COUNT", "*")
+        and metric.grain == frozenset({"orders.o_orderpriority"})
+    )
+    assert q04_metric is not None  # present by default -- profiles are opt-in
+
+    profiles = {
+        "orders": _profile("orders", {"o_orderkey": (100, 0, 100), "o_orderpriority": (100, 0, 5)}),
+        "lineitem": _profile("lineitem", {"l_orderkey": (400, 0, 100)}),
+    }
+    with_profiles = induce(stats, catalog, facts, min_support=1, profiles=profiles)
+
+    assert not any(
+        metric.measure == ("COUNT", "*") and metric.grain == frozenset({"orders.o_orderpriority"})
+        for metric in with_profiles.metrics
+    )

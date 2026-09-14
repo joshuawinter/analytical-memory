@@ -1,0 +1,2 @@
+promotions,total,"((CAST(promotions AS DECIMAL(15, 4)) / CAST(total AS DECIMAL(15, 4))) * 100)"
+68951.36,68951.36,100.0

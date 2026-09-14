@@ -1,0 +1,51 @@
+{
+  "question": "Why did on-time-in-full fulfillment decline this month?",
+  "steps": [
+    "baseline_period_comparison",
+    "warehouse_driver_breakdown",
+    "event_evidence_linkage"
+  ],
+  "metric_definition": "Delivered by promised date and delivered quantity >= ordered quantity.",
+  "baseline": [
+    {
+      "month": "2026-01-01",
+      "orders": 40,
+      "otif": 40,
+      "late": 0
+    },
+    {
+      "month": "2026-02-01",
+      "orders": 40,
+      "otif": 20,
+      "late": 20
+    }
+  ],
+  "drivers": [
+    {
+      "warehouse": "W03",
+      "orders": 20,
+      "late": 20,
+      "stockouts": 20
+    },
+    {
+      "warehouse": "W01",
+      "orders": 14,
+      "late": 0,
+      "stockouts": 0
+    },
+    {
+      "warehouse": "W02",
+      "orders": 6,
+      "late": 0,
+      "stockouts": 0
+    }
+  ],
+  "finding": "February OTIF decline concentrated in W03 stockouts",
+  "evidence": [
+    "sales_order",
+    "sales_order_line",
+    "order_event",
+    "inventory_snapshot"
+  ],
+  "hidden_truth_used": false
+}
