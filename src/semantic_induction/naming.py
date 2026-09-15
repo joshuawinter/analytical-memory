@@ -60,17 +60,36 @@ class AnthropicNamingProvider:
         payload = asdict(structure) if is_dataclass(structure) else structure
         response = self.client.messages.create(
             model=self.config.model,
-            max_tokens=256,
+            max_tokens=400,
             system=(
-                "Propose a business name and one-sentence definition for this "
-                "evidence-backed semantic-layer object, for a human reviewer to "
-                "approve, reject, or correct. The name must be a short, "
-                "human-readable business phrase (e.g. 'Total Revenue by Region') "
-                "-- never a code identifier, and never snake_case or underscores. "
-                "The definition must state only what the supplied evidence shows "
-                "(the measure, its grain, any invariant filters, and observed "
-                "profile evidence where given). Do not invent business semantics "
-                "beyond what is given, and do not change the supplied structure. "
+                "Propose a business name and definition for this evidence-backed "
+                "semantic-layer object, for a human reviewer to approve, reject, "
+                "or correct. The name must be a short, human-readable business "
+                "phrase (e.g. 'Total Revenue by Region') -- never a code "
+                "identifier, and never snake_case or underscores.\n\n"
+                "If the payload includes raw_sql, use it as your primary source "
+                "for reading intent -- it is the actual query text behind this "
+                "signature, richer than the extracted structural fields alone. "
+                "If any invariant_filters compare a column to a literal string "
+                "or enum-like value (a status, a category, a flag), gloss what "
+                "that value plausibly means in one clause, grounded in the SQL "
+                "and column name -- do not invent a meaning the SQL gives no "
+                "basis for.\n\n"
+                "If structured is true: state only what the supplied evidence "
+                "shows (the measure, its grain, invariant filters, observed "
+                "profile evidence) as a precise one-sentence definition. Do not "
+                "invent business semantics beyond what is given, and do not "
+                "change the supplied structure.\n\n"
+                "If structured is false: this shape (a CTE-derived column, a "
+                "CASE branch, a nested subquery) cannot be safely stated as a "
+                "governed business definition -- flattening it into "
+                "measure/grain/filter form would lose meaning the SQL actually "
+                "encodes. Instead, read raw_sql and explain in one to three "
+                "plain-language sentences what it actually computes. Begin the "
+                "description with 'Unreviewed SQL interpretation:' and make "
+                "clear this is a reading of the query, not an approved "
+                "definition -- a human must verify it against the SQL before it "
+                "governs anything.\n\n"
                 "Return JSON only with exactly two string fields: name and "
                 "description."
             ),
@@ -124,7 +143,9 @@ class EnvironmentNamingConfig:
         return os.getenv(self.model_env)
 
 
-def _metric_definition_payload(definition: MetricDefinition) -> dict[str, object]:
+def _metric_definition_payload(
+    definition: MetricDefinition, raw_sql: Iterable[str] = (), structured: bool = True
+) -> dict[str, object]:
     aggregation, column = definition.measure
     return {
         "measure": column,
@@ -137,24 +158,41 @@ def _metric_definition_payload(definition: MetricDefinition) -> dict[str, object
         "evidence_count": len(definition.evidence_ids),
         "confidence": definition.confidence,
         "profile_notes": list(definition.profile_notes),
+        "raw_sql": list(raw_sql),
+        "structured": structured,
     }
 
 
 def name_metric_definition(
-    definition: MetricDefinition, provider: NamingProvider | None = None
+    definition: MetricDefinition,
+    provider: NamingProvider | None = None,
+    raw_sql: Iterable[str] = (),
+    structured: bool = True,
 ) -> NamedDefinition:
     """Stage 5: propose a business name and definition for one evidence-backed metric.
 
     Unlike ``name_layer`` (which names bare structural ``Entity``/``Measure``
     objects with no relational or data context), this sends the provider the
     full evidence a human reviewer already sees: join path, invariant
-    filters, and profile evidence such as observed values and ranges --
-    matching the payload shape documented in ARCHITECTURE.md's Stage 5
-    section. The provider renames; it must not be trusted to add or remove
+    filters, profile evidence such as observed values and ranges, and now
+    the actual SQL text that produced the signature -- matching the payload
+    shape documented in ARCHITECTURE.md's Stage 5 section, which the
+    implementation previously fell short of (structural facts only, no raw
+    SQL). The provider renames; it must not be trusted to add or remove
     structure, so the returned name/description are the only fields used.
+
+    ``structured=False`` marks a candidate the flat measure/grain/filter
+    contract cannot represent faithfully (a CTE-derived column, a CASE
+    branch, a nested subquery -- see ``is_publishable_metric`` and
+    ARCHITECTURE.md's publication boundary). Those candidates are excluded
+    from ``review_items()``'s governed-definition path entirely today --
+    they simply vanish. The provider is asked to narrate what the SQL
+    computes in plain language instead of asserting a governed definition,
+    so a reviewer sees *something* rather than nothing; that narration is
+    presented as unstructured evidence, never as an approved definition.
     """
     provider = provider or MockNamingProvider()
-    payload = _metric_definition_payload(definition)
+    payload = _metric_definition_payload(definition, raw_sql, structured)
     return provider.name(definition.definition_id, payload)
 
 

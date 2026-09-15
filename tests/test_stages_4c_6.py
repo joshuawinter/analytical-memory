@@ -43,7 +43,7 @@ def test_anthropic_naming_provider_uses_structured_response():
     class Messages:
         def create(self, **request):
             assert request["model"] == "test-model"
-            assert request["max_tokens"] == 256
+            assert request["max_tokens"] == 400
             return type("Response", (), {"content": [type("Block", (), {"text": '{"name":"Orders","description":"Customer orders."}'})()]})()
 
     class Client:

@@ -50,6 +50,8 @@ def test_name_metric_definition_sends_join_path_filters_and_profile_evidence():
     assert payload["evidence_count"] == 2
     assert payload["confidence"] == 0.67
     assert payload["profile_notes"] == ["return flag: 3 distinct values (observed: 'N', 'R', 'A')"]
+    assert payload["raw_sql"] == []
+    assert payload["structured"] is True
     assert named.name == "Stub Name"
     assert named.description == "Stub description."
 
@@ -59,3 +61,17 @@ def test_name_metric_definition_defaults_to_mock_provider_when_none_given():
 
     assert named.source == "mock"
     assert named.object_id == "metric:0:sum"
+
+
+def test_name_metric_definition_sends_raw_sql_and_structured_flag():
+    # An unstructured candidate (a CTE-derived column, a CASE branch) can't
+    # be flattened into a governed definition -- the provider needs the
+    # actual query text and to know it should narrate, not define.
+    provider = _RecordingProvider()
+    sql = ["SELECT tmp1.customer_id, SUM(orders.amount) FROM tmp1 JOIN orders ..."]
+
+    name_metric_definition(_definition(), provider, raw_sql=sql, structured=False)
+
+    payload = provider.seen_structure
+    assert payload["raw_sql"] == sql
+    assert payload["structured"] is False

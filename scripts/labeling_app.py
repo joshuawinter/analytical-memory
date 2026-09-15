@@ -27,6 +27,7 @@ from semantic_induction.memory import (
     BusinessConcept,
     Evidence,
     MetricDefinition,
+    is_publishable_metric,
     memory_from_layer,
 )
 from semantic_induction.naming import AnthropicNamingProvider, name_metric_definition
@@ -38,17 +39,29 @@ def _label(column: str) -> str:
     return re.sub(r"^[a-z]+_", "", column.rsplit(".", 1)[-1]).replace("_", " ").title()
 
 
-def _apply_llm_naming(memory: AnalyticalMemory) -> None:
+def _apply_llm_naming(memory: AnalyticalMemory, sql_by_id: dict[str, str], catalog: dict) -> None:
     """Stage 5: replace heuristic labels/definitions with a real naming pass.
 
     Opt-in only (``--naming-provider anthropic``); the default stays the
     deterministic, zero-cost heuristic path in ``memory.py``. Fails loudly if
     requested without credentials rather than silently falling back -- a
     silently-skipped rename would be indistinguishable from a real one.
+
+    Runs over every induced candidate, including ones the flat
+    measure/grain/filter contract can't represent faithfully (a CTE-derived
+    column, a CASE branch, a nested subquery) and that
+    ``LabelingStore.review_items()`` would otherwise mark unstructured with
+    no further evidence attached. Those get the actual SQL text and a
+    narration prompt instead of a governed-definition prompt -- see
+    ``name_metric_definition``'s docstring.
     """
     provider = AnthropicNamingProvider()
+    known_tables = set(catalog)
     for definition_id, definition in list(memory.metric_definitions.items()):
-        named = name_metric_definition(definition, provider)
+        structured = is_publishable_metric(definition, known_tables)
+        query_ids = (evidence_id.removeprefix("query:") for evidence_id in definition.evidence_ids)
+        raw_sql = [sql_by_id[query_id] for query_id in query_ids if query_id in sql_by_id]
+        named = name_metric_definition(definition, provider, raw_sql=raw_sql, structured=structured)
         memory.metric_definitions[definition_id] = replace(definition, inferred_definition=named.description)
         concept = memory.concepts.get(definition.concept_id)
         if concept:
@@ -85,7 +98,8 @@ def build_store(
     }
     memory = memory_from_layer(layer, concepts, profiles=profiles)
     if naming_provider == "anthropic":
-        _apply_llm_naming(memory)
+        sql_by_id = {query.id: query.sql for query in queries}
+        _apply_llm_naming(memory, sql_by_id, catalog)
     store = LabelingStore(memory, labels)
     store.load()
     return store, catalog
@@ -259,9 +273,12 @@ button.sec{background:#2e5a61}
 .card.approve{border-left-color:#4d9a72}
 .card.reject{border-left-color:#bd5548}
 .card.clarify{border-left-color:#d1a23d}
+.card.unstructured{border-left-style:dashed;border-left-color:#8a93a6;background:#fbfbfc}
 .head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
 .head h2{margin:2px 0 0;font-size:17px}
 .kicker{display:block;color:#7f958f;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.kicker-unstructured{color:#6b7280}
+.unstructured-note{background:#eef0f3;color:#556070;border-radius:6px;padding:8px 10px;font-size:12px;margin:10px 0 0;line-height:1.45}
 .status{color:#687873;font-size:12px}
 .status-pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;background:#eef2f0;color:#5c6f6a;white-space:nowrap}
 .status-pill.approve{background:#d7efdf;color:#25633e}
@@ -455,15 +472,17 @@ function render() {
     const decisionClass = (x.decision || '').toLowerCase();
     const confPct = Math.round((x.confidence || 0) * 100);
     const sourceCount = (x.evidence || []).length;
+    const unstructured = x.structured === false;
     const reasoningBody = x.sql
       ? sqlEditorHtml(x.sql, 'metric.sql')
       : ((x.joins.length || x.filters.length) ? chips([...x.joins, ...x.filters]) : '');
     return `
-    <article class="card ${decisionClass}">
+    <article class="card ${decisionClass}${unstructured ? ' unstructured' : ''}">
       <div class="head">
-        <div><span class="kicker">Induced metric proposal</span><h2>${esc(x.label)}</h2></div>
+        <div><span class="kicker${unstructured ? ' kicker-unstructured' : ''}">${unstructured ? 'Unstructured · not a governed definition' : 'Induced metric proposal'}</span><h2>${esc(x.label)}</h2></div>
         <span class="status-pill ${decisionClass}">${esc(x.decision || 'PENDING')}</span>
       </div>
+      ${unstructured ? '<p class="unstructured-note">This SQL shape (a CTE, CASE branch, or nested subquery) can\'t be safely flattened into a measure/grain/filter definition. What follows is a reading of the query, not an approved definition — verify it against the SQL below before trusting it.</p>' : ''}
       <p class="definition">${esc(x.inferred_definition)}</p>
       <div class="chips">
         <span class="chip measure">${esc(x.measure)}</span>

@@ -145,8 +145,7 @@ class LabelingStore:
     def review_items(self, catalog: Catalog | None = None) -> list[dict[str, object]]:
         items: list[dict[str, object]] = []
         for definition in self.memory.metric_definitions.values():
-            if not is_publishable_metric(definition, set(self.memory.profiles)):
-                continue
+            structured = is_publishable_metric(definition, set(self.memory.profiles))
             concept = self.memory.concepts.get(definition.concept_id)
             evidence = [self.memory.evidence[item] for item in definition.evidence_ids if item in self.memory.evidence]
             resolution = self.memory.resolutions.get(definition.definition_id)
@@ -191,6 +190,7 @@ class LabelingStore:
                     "definition_id": definition.definition_id,
                     "label": concept.preferred_label if concept else definition.measure[1],
                     "inferred_definition": definition.inferred_definition,
+                    "structured": structured,
                     "profile_notes": list(definition.profile_notes),
                     "samples": samples,
                     "sql": sql,
