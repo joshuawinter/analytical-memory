@@ -29,7 +29,11 @@ def test_aggregate_counts_corpus_support():
 
     assert stats.table_freq["lineitem"] == 17
     assert "revenue" not in stats.table_freq
-    assert stats.edge_freq.most_common(1)[0][1] == 6
+    # supplier.s_nationkey = nation.n_nationkey, at physical-table-name
+    # frequency now that Stage 1 resolves query-local table aliases (e.g.
+    # different queries aliasing `supplier` differently no longer fragment
+    # the same canonical join edge into separate counts).
+    assert stats.edge_freq.most_common(1)[0][1] == 8
     assert stats.agg_freq[("SUM", "lineitem.l_extendedprice")] > 0
     assert stats.grain_freq[frozenset({
         "lineitem.l_returnflag",
