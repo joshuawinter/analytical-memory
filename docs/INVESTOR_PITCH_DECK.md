@@ -93,6 +93,14 @@ Observe enterprise evidence -> propose interpretation -> validate mechanically
 Automation assembles evidence and performs mechanical checks. Humans remain in
 control of meaning, policy, authority, and escalation.
 
+**That control has to stay cheap to keep, not just possible in principle.**
+The common failure mode as agent adoption scales is not a bad decision -- it
+is override becoming slower and costlier than acceptance, until people stop
+bothering and the organization loses track of what it decided versus what an
+agent assumed. Every correction here is captured with rationale, outranks raw
+frequency, and becomes what the next agent retrieves -- so checking stays
+cheap instead of eroding under its own weight.
+
 ---
 
 ## Slide 4 | Make Existing Data and AI Investments Work Better
