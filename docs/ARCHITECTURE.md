@@ -813,25 +813,30 @@ history, drift/conflict views, access controls, and a buyer-facing evaluation
 report. Those are product-scope additions, not reasons to reopen the locked
 TPC-H mechanics.
 
-**Tier 4 — Conflict precision.** Synthetically perturb a subset of the 99
-templates: some to encode genuine definitional disagreement (add or drop an
-invariant predicate), others to vary only grain or date basis. Then measure
-whether 4b separates them.
+**Tier 4 — Conflict precision.** Hand-author query pairs against the TPC-DS
+schema with known ground truth -- some encode a genuine definitional
+disagreement (a recurring invariant predicate one side has and the other
+doesn't), some vary only grain, one is a documented, accepted gap -- and
+measure whether 4b separates them. Optimize for **precision over recall**. A
+missed conflict is a wrong number someone eventually catches. A false
+conflict is a VP's time, and three of those end the pilot.
 
-```python
-def tier4(conflicts, injected_truth):
-    real     = {c for c in conflicts if c.kind is not GRAIN_VARIATION}
-    return Metrics(
-        precision = |real ∩ injected_truth.real| / |real|,
-        recall    = |real ∩ injected_truth.real| / |injected_truth.real|,
-        # the one that predicts adoption:
-        noise_rate = |real ∩ injected_truth.grain_only| / |real|,
-    )
-```
+The implementation is `tier4.py`'s `Tier4Scenario`/`run_tier4`, matching this
+section's original formula (`precision`, `recall`, `noise_rate` against
+`DEFINITIONAL`-vs-not classification). `scripts/run_tier4.py` wires three
+scenarios from `data/tpcds/tier4/queries/` -- a recurring inclusion/exclusion
+predicate (real conflict), a single-observation filter on a continuous
+column (documented gap, not a bug: it neither recurs nor is low-cardinality,
+so 4b treats it as narrowing rather than definitional), and a finer grain
+(not a conflict at all). All three currently pass. It is offline and
+deterministic, so it runs in the main test suite (`test_tier4.py`) rather
+than needing a live model like Tier 3.
 
-Optimize for **precision over recall**. A missed conflict is a wrong number
-someone eventually catches. A false conflict is a VP's time, and three of those
-end the pilot.
+This is a first, small labeled set, not a swept evaluation -- it proves the
+harness and formula work end to end and locks in the current classification
+behavior as a regression guard. Expanding it (more scenarios, perturbing
+real TPC-DS templates directly rather than hand-authored pairs) is the
+natural next step before trusting precision/recall numbers at any scale.
 
 ### The production metric
 

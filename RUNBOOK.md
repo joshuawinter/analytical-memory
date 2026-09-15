@@ -418,3 +418,25 @@ Export an auto-induced semantic layer into vendor-neutral Apache Ossie YAML form
 ```
 
 This induces all 24 datasets, measures, and relationships from the 99 raw TPC-DS SQL queries and serializes them into valid Apache Ossie spec YAML in seconds with zero API calls.
+
+## 18. Run the Tier 4 conflict-precision harness
+
+Offline and deterministic -- no API key, no live model. Measures whether
+Stage 4b's conflict detection correctly separates a genuine definitional
+disagreement from benign grain variation, against a small set of
+hand-authored TPC-DS query pairs with known ground truth (see
+`docs/ARCHITECTURE.md`'s Tier 4 section):
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_tier4.py
+```
+
+Prints PASS/FAIL per scenario plus precision, recall, and noise rate. Exits
+non-zero if any scenario is misclassified. Defaults to
+`data\tpcds\tpcds.duckdb` for profile evidence (sharpens the low-cardinality
+check) if that file exists, and runs without it otherwise; pass
+`--database` to point at a different one.
+
+The same scenarios run in the offline test suite (`pytest`, section 2) as
+`test_tier4.py`, so a regression here is caught before it reaches this
+script.
