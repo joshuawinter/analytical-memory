@@ -70,6 +70,24 @@ QUESTIONS = [
         "category), what is its total supply cost across suppliers based "
         "in Germany?",
     ),
+    BusinessQuestion(
+        "total_revenue_no_filter",
+        "What is the total extended price summed across every line item, "
+        "with no date range or status filtering applied?",
+    ),
+    BusinessQuestion(
+        "revenue_by_local_supplier_nation_asia_1994",
+        "For orders placed during calendar year 1994 by customers located "
+        "in the Asia region, what is the total extended price of line "
+        "items fulfilled by a supplier based in the same nation as the "
+        "customer, broken out by that nation?",
+    ),
+    BusinessQuestion(
+        "avg_discount_by_flag_status",
+        "What is the average discount applied to line items, grouped by "
+        "return flag and line status, restricted to line items shipped on "
+        "or before 1998-09-02?",
+    ),
 ]
 
 # Ground truth authored independently of both composers and of the bundled
@@ -99,6 +117,35 @@ REFERENCE_SQL = {
         "FROM partsupp ps, supplier s, nation n "
         "WHERE ps.ps_suppkey = s.s_suppkey AND s.s_nationkey = n.n_nationkey "
         "AND n.n_name = 'GERMANY' GROUP BY ps.ps_partkey"
+    ),
+    # Single-table, no join, no filter -- a cheap sanity check that both
+    # arms can at least sum a column with nothing else going on.
+    "total_revenue_no_filter": (
+        "SELECT SUM(l_extendedprice) AS metric_value FROM lineitem"
+    ),
+    # The informative one in this batch: a six-table join (customer, orders,
+    # lineitem, supplier, nation, region) with a "local supplier" condition
+    # (customer and supplier share a nation) plus a region and date-range
+    # filter. Real join reasoning, not just a lookup.
+    "revenue_by_local_supplier_nation_asia_1994": (
+        "SELECT n.n_name, SUM(l.l_extendedprice) AS metric_value "
+        "FROM customer c "
+        "JOIN orders o ON c.c_custkey = o.o_custkey "
+        "JOIN lineitem l ON l.l_orderkey = o.o_orderkey "
+        "JOIN supplier s ON l.l_suppkey = s.s_suppkey "
+        "JOIN nation n ON s.s_nationkey = n.n_nationkey AND c.c_nationkey = n.n_nationkey "
+        "JOIN region r ON n.n_regionkey = r.r_regionkey "
+        "WHERE r.r_name = 'ASIA' AND o.o_orderdate >= DATE '1994-01-01' "
+        "AND o.o_orderdate < DATE '1995-01-01' GROUP BY n.n_name"
+    ),
+    # Same grain as quantity_by_flag_status but a different aggregation
+    # function (AVG, not SUM) and a different measure column, to check the
+    # composer is picking the right function rather than pattern-matching
+    # the first bundled question.
+    "avg_discount_by_flag_status": (
+        "SELECT l_returnflag, l_linestatus, AVG(l_discount) AS metric_value "
+        "FROM lineitem WHERE l_shipdate <= DATE '1998-09-02' "
+        "GROUP BY l_returnflag, l_linestatus"
     ),
 }
 

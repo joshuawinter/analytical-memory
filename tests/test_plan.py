@@ -66,6 +66,23 @@ def test_plan_filter_on_a_date_column_is_rendered_as_a_safe_literal():
     assert Predicate("orders.shipdate", "LTE", "DATE '1998-09-02'") in metric.default_filters
 
 
+def test_plan_filter_on_the_same_column_and_op_as_an_invariant_is_dropped_not_duplicated():
+    catalog = {"orders": {"amount": "DECIMAL", "status": "VARCHAR", "voided": "BOOLEAN"}}
+    # The composer echoes back the invariant it was already given, rendered
+    # through the plan's own literal formatting. This must not produce two
+    # ANDed conditions on `orders.voided` in the compiled metric.
+    plan = MetricPlan(
+        measure=("SUM", "orders.amount"),
+        dimensions=("orders.status",),
+        filters=(Predicate("orders.voided", "EQ", "false"),),
+    )
+
+    metric = resolve_plan(plan, _layer(), catalog)
+
+    voided_filters = [p for p in metric.default_filters if p.column == "orders.voided"]
+    assert voided_filters == [Predicate("orders.voided", "EQ", "false")]
+
+
 def test_plan_filter_with_non_numeric_value_on_a_numeric_column_is_rejected():
     catalog = {"orders": {"amount": "DECIMAL", "status": "VARCHAR"}}
     plan = MetricPlan(

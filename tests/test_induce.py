@@ -4,7 +4,7 @@ from semantic_induction.aggregate import aggregate
 from semantic_induction.extract import extract_corpus
 from semantic_induction.induce import classify_entities, detect_fanout_risk, induce
 from semantic_induction.ingest import ingest
-from semantic_induction.models import ColumnProfile, JoinEdge, Metric, TableProfile
+from semantic_induction.models import Agg, ColumnProfile, JoinEdge, Metric, QueryFacts, TableProfile
 
 
 ROOT = Path(__file__).parents[1]
@@ -26,6 +26,39 @@ def test_induces_structural_entities_measures_and_dimensions():
     assert ("SUM", "lineitem.l_extendedprice") in layer.measures
     assert "lineitem.l_returnflag" in layer.dimensions
     assert all(metric.support >= 2 for metric in layer.metrics)
+
+
+def test_induce_canonicalizes_inner_join_edge_direction_across_queries():
+    # Two queries express the same equi-join with the sides written in
+    # opposite order (`l.l_partkey = p.p_partkey` vs the reverse). For an
+    # INNER join that is the identical condition; without canonicalizing
+    # direction, a metric compiled from both queries' merged join_path
+    # would render the same join twice.
+    catalog = {
+        "lineitem": {"l_extendedprice": "DECIMAL(15,2)", "l_partkey": "BIGINT"},
+        "part": {"p_partkey": "BIGINT"},
+    }
+    facts = [
+        QueryFacts(
+            query_id="q_a",
+            tables={"lineitem", "part"},
+            join_edges=[JoinEdge("lineitem.l_partkey", "part.p_partkey", "INNER")],
+            aggregations=[Agg("SUM", "lineitem.l_extendedprice")],
+        ),
+        QueryFacts(
+            query_id="q_b",
+            tables={"lineitem", "part"},
+            join_edges=[JoinEdge("part.p_partkey", "lineitem.l_partkey", "INNER")],
+            aggregations=[Agg("SUM", "lineitem.l_extendedprice")],
+        ),
+    ]
+    stats = aggregate(facts)
+
+    layer = induce(stats, catalog, facts, min_support=2)
+
+    metric = next(m for m in layer.metrics if m.measure == ("SUM", "lineitem.l_extendedprice"))
+    assert metric.support == 2
+    assert len(metric.join_path) == 1
 
 
 def test_entity_classification_covers_catalog_tables():

@@ -42,6 +42,10 @@ class AnthropicNamingProvider:
                 raise RuntimeError(
                     f"missing API key environment variable: {self.config.api_key_env}"
                 )
+            if not self.config.model:
+                raise RuntimeError(
+                    f"missing model environment variable: {self.config.model_env}"
+                )
             try:
                 from anthropic import Anthropic
             except ImportError as error:
@@ -107,8 +111,8 @@ class EnvironmentNamingConfig:
         return os.getenv(self.api_key_env)
 
     @property
-    def model(self) -> str:
-        return os.getenv(self.model_env, "placeholder-model")
+    def model(self) -> str | None:
+        return os.getenv(self.model_env)
 
 
 def name_layer(layer: SemanticLayer, provider: NamingProvider | None = None) -> SemanticLayer:

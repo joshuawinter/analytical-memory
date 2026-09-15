@@ -155,6 +155,7 @@ number the thesis depends on, run it against Claude:
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e ".[anthropic]"
 $env:SEMANTIC_INDUCTION_API_KEY = "YOUR_REPLACEMENT_KEY"
+$env:SEMANTIC_INDUCTION_MODEL = "claude-sonnet-4-5"
 .\.venv\Scripts\python.exe scripts\run_tier3.py --database data\tpch\tpch.duckdb
 ```
 

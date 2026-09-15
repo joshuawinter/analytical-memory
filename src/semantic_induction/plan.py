@@ -112,11 +112,26 @@ def resolve_plan(plan: MetricPlan, layer: SemanticLayer, catalog: Catalog) -> Me
     # Multiple signatures at the same grain would be a Stage 4b conflict;
     # with arbitration disregarded, the highest-support signature wins.
     base = max(matches, key=lambda metric: metric.support)
+
+    # A plan filter on the same (column, op) as an existing invariant is
+    # redundant, not narrowing: the corpus-derived invariant already defines
+    # the metric on that column and is authoritative (see module docstring).
+    # Keeping both would either duplicate an identical clause when the
+    # composer's literal rendering happens to differ in surface form from
+    # the invariant's (e.g. `DATE '1998-09-02'` vs `CAST('1998-09-02' AS
+    # DATE)`, which are equal SQL but unequal strings, so a plain set union
+    # would not dedupe them), or silently AND together two different values
+    # on the same column with no error at all. Drop the plan-supplied one.
+    base_columns_and_ops = {(predicate.column, predicate.op) for predicate in base.default_filters}
+    narrowing_filters = tuple(
+        predicate for predicate in rendered_filters
+        if (predicate.column, predicate.op) not in base_columns_and_ops
+    )
     return Metric(
         measure=plan.measure,
         grain=requested_grain,
         join_path=base.join_path,
-        default_filters=tuple(sorted(set(base.default_filters) | set(rendered_filters), key=str)),
+        default_filters=tuple(sorted(set(base.default_filters) | set(narrowing_filters), key=str)),
         support=base.support,
         seen_in=base.seen_in,
     )

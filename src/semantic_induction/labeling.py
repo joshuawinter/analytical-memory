@@ -6,6 +6,7 @@ from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
+from semantic_induction.audit import AuditLedger
 from semantic_induction.memory import AnalyticalMemory, Resolution, is_publishable_metric
 
 DECISIONS = {"APPROVE", "REJECT", "CLARIFY"}
@@ -26,6 +27,14 @@ class LabelingStore:
     @property
     def enrichment_path(self) -> Path | None:
         return self.path.with_suffix(".vocabulary.json") if self.path else None
+
+    @property
+    def audit_path(self) -> Path | None:
+        return self.path.with_suffix(".audit.jsonl") if self.path else None
+
+    @property
+    def audit_ledger(self) -> AuditLedger:
+        return AuditLedger(self.audit_path)
 
     def label(
         self,
@@ -54,6 +63,16 @@ class LabelingStore:
         )
         self.memory.resolutions[definition_id] = resolution
         self.save()
+        self.audit_ledger.append(
+            "KNOWLEDGE_DECISION",
+            resolution.decided_by,
+            {
+                "definition_id": definition_id,
+                "decision": resolution.decision,
+                "rationale": resolution.rationale,
+                "resolution_id": resolution.resolution_id,
+            },
+        )
         return resolution
 
     def enrich(self, definition_id: str, corrected_definition: str, aliases: str) -> None:
@@ -74,6 +93,15 @@ class LabelingStore:
                 concept, aliases=tuple(dict.fromkeys((*concept.aliases, *alias_list)))
             )
         self.save()
+        self.audit_ledger.append(
+            "VOCABULARY_ENRICHMENT",
+            "reviewer",
+            {
+                "definition_id": definition_id,
+                "corrected_definition": corrected_definition.strip(),
+                "aliases": list(alias_list),
+            },
+        )
 
     def save(self) -> None:
         if self.path is None:

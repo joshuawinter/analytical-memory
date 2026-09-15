@@ -9,6 +9,7 @@ from semantic_induction.models import (
     CorpusStats,
     Dimension,
     Entity,
+    JoinEdge,
     Measure,
     Metric,
     Predicate,
@@ -64,6 +65,22 @@ def classify_entities(stats: CorpusStats, catalog: Catalog) -> dict[str, Entity]
     return entities
 
 
+def _canonical_edge(edge: JoinEdge) -> JoinEdge:
+    """Collapse an INNER edge's direction so `a=b` and `b=a` merge.
+
+    Two queries can express the same equi-join with either side written
+    first (`WHERE l.l_partkey = p.p_partkey` vs `WHERE p.p_partkey =
+    l.l_partkey`). For INNER joins that is the identical condition, but
+    left/right order makes them unequal `JoinEdge` values, so a plain set
+    keeps both -- doubling the join condition when a metric is compiled.
+    Direction is semantically meaningful for outer joins, so only INNER
+    edges are canonicalized.
+    """
+    if edge.join_type == "INNER" and edge.right < edge.left:
+        return JoinEdge(left=edge.right, right=edge.left, join_type=edge.join_type)
+    return edge
+
+
 def _candidate_metrics(facts_list: Iterable[QueryFacts]) -> list[Metric]:
     candidates: dict[tuple[tuple[str, str], frozenset[str], frozenset[str]], list[QueryFacts]] = defaultdict(list)
     for facts in facts_list:
@@ -76,7 +93,12 @@ def _candidate_metrics(facts_list: Iterable[QueryFacts]) -> list[Metric]:
     for (measure, grain, _tables), queries in candidates.items():
         predicate_sets = [set(query.predicates) for query in queries]
         invariant_filters = tuple(sorted(set.intersection(*predicate_sets), key=str)) if predicate_sets else ()
-        join_path = tuple(sorted({edge for query in queries for edge in query.join_edges}, key=str))
+        join_path = tuple(
+            sorted(
+                {_canonical_edge(edge) for query in queries for edge in query.join_edges},
+                key=str,
+            )
+        )
         metrics.append(
             Metric(
                 measure=measure,
