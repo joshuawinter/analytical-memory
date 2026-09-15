@@ -7,6 +7,7 @@ from dataclasses import asdict, is_dataclass
 from collections.abc import Iterable
 from typing import Protocol
 
+from semantic_induction.memory import MetricDefinition
 from semantic_induction.models import Entity, Measure, NamedDefinition, SemanticLayer
 
 
@@ -61,9 +62,17 @@ class AnthropicNamingProvider:
             model=self.config.model,
             max_tokens=256,
             system=(
-                "Name a structural semantic-layer object. Return JSON only with "
-                "exactly two string fields: name and description. Do not change "
-                "the supplied structure or invent business semantics."
+                "Propose a business name and one-sentence definition for this "
+                "evidence-backed semantic-layer object, for a human reviewer to "
+                "approve, reject, or correct. The name must be a short, "
+                "human-readable business phrase (e.g. 'Total Revenue by Region') "
+                "-- never a code identifier, and never snake_case or underscores. "
+                "The definition must state only what the supplied evidence shows "
+                "(the measure, its grain, any invariant filters, and observed "
+                "profile evidence where given). Do not invent business semantics "
+                "beyond what is given, and do not change the supplied structure. "
+                "Return JSON only with exactly two string fields: name and "
+                "description."
             ),
             messages=[
                 {
@@ -113,6 +122,40 @@ class EnvironmentNamingConfig:
     @property
     def model(self) -> str | None:
         return os.getenv(self.model_env)
+
+
+def _metric_definition_payload(definition: MetricDefinition) -> dict[str, object]:
+    aggregation, column = definition.measure
+    return {
+        "measure": column,
+        "aggregation": aggregation,
+        "grain": list(definition.grain),
+        "join_path": [f"{edge.left} = {edge.right}" for edge in definition.join_path],
+        "invariant_filters": [
+            f"{predicate.column} {predicate.op} {predicate.value}" for predicate in definition.default_filters
+        ],
+        "evidence_count": len(definition.evidence_ids),
+        "confidence": definition.confidence,
+        "profile_notes": list(definition.profile_notes),
+    }
+
+
+def name_metric_definition(
+    definition: MetricDefinition, provider: NamingProvider | None = None
+) -> NamedDefinition:
+    """Stage 5: propose a business name and definition for one evidence-backed metric.
+
+    Unlike ``name_layer`` (which names bare structural ``Entity``/``Measure``
+    objects with no relational or data context), this sends the provider the
+    full evidence a human reviewer already sees: join path, invariant
+    filters, and profile evidence such as observed values and ranges --
+    matching the payload shape documented in ARCHITECTURE.md's Stage 5
+    section. The provider renames; it must not be trusted to add or remove
+    structure, so the returned name/description are the only fields used.
+    """
+    provider = provider or MockNamingProvider()
+    payload = _metric_definition_payload(definition)
+    return provider.name(definition.definition_id, payload)
 
 
 def name_layer(layer: SemanticLayer, provider: NamingProvider | None = None) -> SemanticLayer:

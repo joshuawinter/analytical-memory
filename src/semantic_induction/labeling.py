@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from semantic_induction.audit import AuditLedger
+from semantic_induction.compile import CompileError, compile_metric
 from semantic_induction.memory import AnalyticalMemory, Resolution, is_publishable_metric
+from semantic_induction.models import Catalog, Metric
 
 DECISIONS = {"APPROVE", "REJECT", "CLARIFY"}
 
@@ -140,7 +142,7 @@ class LabelingStore:
                         concept, aliases=tuple(dict.fromkeys((*concept.aliases, *aliases)))
                     )
 
-    def review_items(self) -> list[dict[str, object]]:
+    def review_items(self, catalog: Catalog | None = None) -> list[dict[str, object]]:
         items: list[dict[str, object]] = []
         for definition in self.memory.metric_definitions.values():
             if not is_publishable_metric(definition, set(self.memory.profiles)):
@@ -168,6 +170,22 @@ class LabelingStore:
                         "rows": [list(row) for row in profile.sample_rows[:3]],
                     }
                 )
+            sql = definition.query_sql
+            if sql is None and catalog is not None:
+                try:
+                    sql = compile_metric(
+                        Metric(
+                            measure=definition.measure,
+                            grain=frozenset(definition.grain),
+                            join_path=definition.join_path,
+                            default_filters=definition.default_filters,
+                            support=0,
+                            seen_in=(),
+                        ),
+                        catalog,
+                    )
+                except CompileError:
+                    sql = None
             items.append(
                 {
                     "definition_id": definition.definition_id,
@@ -175,6 +193,7 @@ class LabelingStore:
                     "inferred_definition": definition.inferred_definition,
                     "profile_notes": list(definition.profile_notes),
                     "samples": samples,
+                    "sql": sql,
                     "measure": f"{definition.measure[0]}({definition.measure[1]})",
                     "grain": list(definition.grain),
                     "filters": [f"{item.column} {item.op} {item.value}" for item in definition.default_filters],

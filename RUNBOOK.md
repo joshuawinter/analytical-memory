@@ -229,6 +229,24 @@ The goal is low-friction expert feedback that improves the agent. The current
 card interface is an implementation choice; no particular gesture or review
 metaphor is a product requirement.
 
+By default the candidate's business name and definition come from a
+deterministic, zero-cost heuristic (no API key, no network call). To use
+Stage 5's LLM naming pass instead -- which sees the full evidence a reviewer
+sees (join path, invariant filters, and profile evidence such as observed
+values and ranges), not just the bare column name -- set both credentials in
+the same terminal and add `--naming-provider anthropic`:
+
+```powershell
+$env:SEMANTIC_INDUCTION_API_KEY = "YOUR_REPLACEMENT_KEY"
+$env:SEMANTIC_INDUCTION_MODEL = "claude-sonnet-4-5"
+.\.venv\Scripts\python.exe scripts\labeling_app.py --domain tpch --naming-provider anthropic
+```
+
+This makes one API call per induced candidate at server startup (19 calls for
+TPC-H, 285 for TPC-DS -- mind the cost target in section 14 before choosing
+`tpcds`). If the credentials are missing, the server refuses to start with a
+clear error rather than silently falling back to the heuristic path.
+
 The same page also includes an investigation panel. Enter a business question
 to retrieve an approved definition, compile it to SQL, execute it locally, and
 display the definition, evidence, SQL, and result rows. Questions with no

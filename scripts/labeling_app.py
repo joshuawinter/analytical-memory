@@ -5,6 +5,7 @@ import argparse
 import json
 import re
 import sys
+from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -28,6 +29,7 @@ from semantic_induction.memory import (
     MetricDefinition,
     memory_from_layer,
 )
+from semantic_induction.naming import AnthropicNamingProvider, name_metric_definition
 from semantic_induction.profile import profile_database
 from semantic_induction.services import InvestigationService, investigation_payload
 
@@ -36,7 +38,29 @@ def _label(column: str) -> str:
     return re.sub(r"^[a-z]+_", "", column.rsplit(".", 1)[-1]).replace("_", " ").title()
 
 
-def build_store(database: Path | None, labels: Path, domain: str = "tpch") -> tuple[LabelingStore, dict[str, dict[str, str]]]:
+def _apply_llm_naming(memory: AnalyticalMemory) -> None:
+    """Stage 5: replace heuristic labels/definitions with a real naming pass.
+
+    Opt-in only (``--naming-provider anthropic``); the default stays the
+    deterministic, zero-cost heuristic path in ``memory.py``. Fails loudly if
+    requested without credentials rather than silently falling back -- a
+    silently-skipped rename would be indistinguishable from a real one.
+    """
+    provider = AnthropicNamingProvider()
+    for definition_id, definition in list(memory.metric_definitions.items()):
+        named = name_metric_definition(definition, provider)
+        memory.metric_definitions[definition_id] = replace(definition, inferred_definition=named.description)
+        concept = memory.concepts.get(definition.concept_id)
+        if concept:
+            memory.concepts[concept.concept_id] = replace(concept, preferred_label=named.name)
+
+
+def build_store(
+    database: Path | None,
+    labels: Path,
+    domain: str = "tpch",
+    naming_provider: str = "mock",
+) -> tuple[LabelingStore, dict[str, dict[str, str]]]:
     data_dir = ROOT / "data" / domain
     catalog, queries = ingest(data_dir / "ddl.sql", data_dir / "queries")
     facts = extract_corpus(queries, catalog)
@@ -59,7 +83,10 @@ def build_store(database: Path | None, labels: Path, domain: str = "tpch") -> tu
         )
         for aggregation, column in layer.measures
     }
-    store = LabelingStore(memory_from_layer(layer, concepts, profiles=profiles), labels)
+    memory = memory_from_layer(layer, concepts, profiles=profiles)
+    if naming_provider == "anthropic":
+        _apply_llm_naming(memory)
+    store = LabelingStore(memory, labels)
     store.load()
     return store, catalog
 
@@ -142,17 +169,21 @@ class MultiDomainRegistry:
         return [{"id": d["id"], "label": d["label"]} for d in self.domains.values()]
 
 
-def init_multi_domain_registry() -> MultiDomainRegistry:
+def init_multi_domain_registry(naming_provider: str = "mock") -> MultiDomainRegistry:
     registry = MultiDomainRegistry()
-    
+
     # 1. TPC-H
     tpch_db = ROOT / "data/tpch/tpch.duckdb"
-    tpch_store, tpch_cat = build_store(tpch_db if tpch_db.exists() else None, ROOT / "data/tpch/labels.json", domain="tpch")
+    tpch_store, tpch_cat = build_store(
+        tpch_db if tpch_db.exists() else None, ROOT / "data/tpch/labels.json", domain="tpch", naming_provider=naming_provider
+    )
     registry.register("tpch", "TPC-H Benchmark (8 tables, 22 queries)", tpch_store, tpch_cat, tpch_db)
 
     # 2. TPC-DS
     tpcds_db = ROOT / "data/tpcds/tpcds.duckdb"
-    tpcds_store, tpcds_cat = build_store(tpcds_db if tpcds_db.exists() else None, ROOT / "data/tpcds/labels.json", domain="tpcds")
+    tpcds_store, tpcds_cat = build_store(
+        tpcds_db if tpcds_db.exists() else None, ROOT / "data/tpcds/labels.json", domain="tpcds", naming_provider=naming_provider
+    )
     registry.register("tpcds", "TPC-DS Benchmark (24 tables, 99 queries)", tpcds_store, tpcds_cat, tpcds_db)
 
     # 3. Order-to-Cash Fulfillment
@@ -163,7 +194,7 @@ def init_multi_domain_registry() -> MultiDomainRegistry:
     return registry
 
 
-PAGE_TEMPLATE = """<!doctype html>
+PAGE_TEMPLATE = r"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -198,28 +229,54 @@ button.sec{background:#2e5a61}
 .answer-message,.answer-empty{color:#61736e}
 .answer-field{margin:10px 0}
 .answer-field label,.field label{display:block;color:#71807b;font-size:11px;text-transform:uppercase;margin-bottom:4px}
-.sql code{display:block;white-space:pre-wrap;background:#edf3ef;padding:10px;margin-top:8px;border-radius:5px;overflow:auto}
-.result-wrap{overflow:auto;border:1px solid #d8e2dc;border-radius:5px}
-.result-wrap table{width:100%;border-collapse:collapse;min-width:420px}
-.result-wrap th,.result-wrap td{text-align:left;padding:9px;border-bottom:1px solid #e3eae5;white-space:nowrap}
-.result-wrap th{font-size:11px;text-transform:uppercase;color:#687873;background:#f2f6f3}
+.data-tableholder{overflow:auto;border:1px solid #d8e2dc;border-radius:6px;max-height:320px;margin-top:6px}
+.data-table{width:100%;border-collapse:collapse;min-width:420px;font-size:13px}
+.data-table thead th{position:sticky;top:0;text-align:left;padding:8px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:#5c6f6a;background:#eef3f0;border-bottom:1px solid #d3ded8;white-space:nowrap}
+.data-table td{padding:7px 10px;border-bottom:1px solid #edf2ee;white-space:nowrap;font-family:Consolas,Menlo,monospace}
+.data-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+.data-table tbody tr:nth-child(even){background:#f8fbf9}
+.data-table tbody tr:hover{background:#eaf3ee}
+.data-table-foot{padding:5px 10px;font-size:11px;color:#7c8d88;background:#f2f6f3;border-top:1px solid #e3eae5}
+.data-table-title{font-size:11px;font-weight:700;color:#3f5551;margin:12px 0 2px}
+.editor{background:#16232a;border-radius:8px;overflow:hidden;margin-top:8px;border:1px solid #0e1a1f}
+.editor-bar{display:flex;align-items:center;gap:6px;padding:7px 12px;background:#0f1a1e}
+.editor-dot{width:9px;height:9px;border-radius:50%;background:#33454b}
+.editor-title{margin-left:8px;color:#7d9a95;font-size:11px;font-family:Consolas,Menlo,monospace;letter-spacing:.03em}
+.editor-body{padding:8px 0;overflow-x:auto;font:12.5px/1.65 Consolas,'Cascadia Code',Menlo,monospace}
+.editor .line{display:flex;padding:0 14px}
+.editor .line:hover{background:#1d2e34}
+.editor .ln{color:#3e5359;width:2.2em;text-align:right;margin-right:16px;user-select:none;flex-shrink:0}
+.editor .lc{color:#dbe9e4;white-space:pre}
+.tok-kw{color:#6fb7dd}
+.tok-str{color:#d7a468}
+.tok-num{color:#a9cf7c}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{background:#e4efe9;color:#2e5a52;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;font-family:Consolas,Menlo,monospace;white-space:nowrap}
+.chip.measure{background:#173b3f;color:#fff}
+.chip.ev{background:#f2ecd9;color:#6b5a20;font-family:inherit;font-weight:500}
+.chip-empty{color:#95a5a0;font-size:12px;font-style:italic}
 .card{background:#fff;border:1px solid #d4dfda;border-left:5px solid #9eb7ad;border-radius:8px;padding:18px;margin:14px 0}
 .card.approve{border-left-color:#4d9a72}
 .card.reject{border-left-color:#bd5548}
 .card.clarify{border-left-color:#d1a23d}
-.head{display:flex;justify-content:space-between;gap:12px}
-.head h2{margin:0;font-size:18px}
+.head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.head h2{margin:2px 0 0;font-size:17px}
+.kicker{display:block;color:#7f958f;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
 .status{color:#687873;font-size:12px}
+.status-pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;background:#eef2f0;color:#5c6f6a;white-space:nowrap}
+.status-pill.approve{background:#d7efdf;color:#25633e}
+.status-pill.reject{background:#f7dcd8;color:#8a3327}
+.status-pill.clarify{background:#f7e6bb;color:#76550d}
+.definition{color:#3a4f4a;margin:10px 0 2px;font-size:14.5px}
+.reasoning{margin:12px 0;border-top:1px dashed #dce6e1;padding-top:10px}
+.reasoning summary{cursor:pointer;font-size:12.5px;font-weight:700;color:#2e5a61;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.reasoning summary::-webkit-details-marker{display:none}
+.reasoning summary::before{content:'▸ ';color:#9eb7ad}
+.reasoning[open] summary::before{content:'▾ '}
+.conf{font-weight:500;color:#8a9c96;font-size:11px;white-space:nowrap}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:15px 0}
-.field code{white-space:pre-wrap}
-.evidence{color:#456060;margin-bottom:14px}
+.evidence-meta{color:#7c8d88;font-size:12px;margin:8px 0}
 .actions{display:grid;grid-template-columns:140px 1fr 110px;gap:9px}
-.sample-table{margin-top:10px}
-.sample-table b{display:block;margin-bottom:5px}
-.sample-wrap{overflow:auto;border:1px solid #d8e2dc;border-radius:5px}
-.sample-wrap table{width:100%;border-collapse:collapse;min-width:520px}
-.sample-wrap th,.sample-wrap td{text-align:left;padding:7px;border-bottom:1px solid #e3eae5;white-space:nowrap}
-.sample-wrap th{font-size:10px;text-transform:uppercase;color:#687873;background:#f2f6f3}
 .mcp-pill{display:inline-block;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#d7efdf;color:#25633e;margin-bottom:12px}
 .mcp-btns{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
 .rpc-box{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
@@ -328,19 +385,46 @@ function showTab(id) {
   document.getElementById('tab2-btn').className = 'tab-btn ' + (id === 'tab-mcp' ? 'active' : '');
 }
 
-function sampleHtml(samples) {
-  if (!samples || !samples.length) return 'none';
-  return samples.map(s => `
-    <div class="sample-table">
-      <b>${esc(s.table)}</b>
-      <div class="sample-wrap">
-        <table>
-          <thead><tr>${s.columns.map(c => '<th>' + esc(c) + '</th>').join('')}</tr></thead>
-          <tbody>${s.rows.map(row => '<tr>' + row.map(v => '<td>' + esc(v) + '</td>').join('') + '</tr>').join('')}</tbody>
-        </table>
-      </div>
-    </div>
-  `).join('');
+function highlightSql(sql) {
+  const KEYWORDS = /\b(SELECT|FROM|WHERE|GROUP BY|ORDER BY|INNER JOIN|LEFT JOIN|JOIN|ON|AS|AND|OR|NOT|IN|BETWEEN|LIKE|IS|NULL|DISTINCT|HAVING|LIMIT|UNION ALL|UNION|WITH|CASE|WHEN|THEN|ELSE|END|CAST|SUM|AVG|COUNT|MIN|MAX)\b/gi;
+  let s = esc(sql);
+  s = s.replace(/('([^'\\]|\\.)*')/g, '<span class="tok-str">$1</span>');
+  s = s.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="tok-num">$1</span>');
+  s = s.replace(KEYWORDS, '<span class="tok-kw">$1</span>');
+  return s;
+}
+
+function sqlEditorHtml(sql, title) {
+  if (!sql) return '';
+  const body = sql.trim().split('\n').map((line, i) =>
+    `<div class="line"><span class="ln">${i + 1}</span><span class="lc">${highlightSql(line)}</span></div>`
+  ).join('');
+  return `<div class="editor">
+    <div class="editor-bar"><span class="editor-dot"></span><span class="editor-dot"></span><span class="editor-dot"></span><span class="editor-title">${esc(title || 'query.sql')}</span></div>
+    <div class="editor-body">${body}</div>
+  </div>`;
+}
+
+function isNumericValue(v) {
+  return typeof v === 'number' || (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v)));
+}
+
+function dataTableHtml(columns, rows) {
+  if (!columns || !columns.length) return '<p class="evidence-meta">no rows</p>';
+  const head = '<tr>' + columns.map(c => '<th>' + esc(c) + '</th>').join('') + '</tr>';
+  const body = rows.map(row => '<tr>' + row.map(v => `<td class="${isNumericValue(v) ? 'num' : ''}">${esc(v)}</td>`).join('') + '</tr>').join('');
+  const foot = `<div class="data-table-foot">${rows.length} row${rows.length === 1 ? '' : 's'}</div>`;
+  return `<div class="data-tableholder"><table class="data-table"><thead>${head}</thead><tbody>${body}</tbody></table></div>${foot}`;
+}
+
+function chips(items, cls) {
+  if (!items || !items.length) return '<span class="chip-empty">none</span>';
+  return '<div class="chips">' + items.map(i => `<span class="chip ${cls || ''}">${esc(i)}</span>`).join('') + '</div>';
+}
+
+function samplesHtml(samples) {
+  if (!samples || !samples.length) return '';
+  return samples.map(s => `<div class="data-table-title">${esc(s.table)} sample</div>${dataTableHtml(s.columns, s.rows)}`).join('');
 }
 
 async function ask() {
@@ -355,12 +439,10 @@ async function ask() {
   });
   const o = await r.json();
   let m = '<div class="answer-head"><span class="answer-status ' + (o.status==='ANSWERED'?'ok':'review') + '">' + esc(o.status) + '</span>' + (o.message ? '<span class="answer-message">' + esc(o.message) + '</span>' : '') + '</div>';
-  if (o.definition) m += '<div class="answer-field"><label>Definition</label><p>' + esc(o.definition) + '</p></div>';
-  if (o.evidence?.length) m += '<div class="answer-field"><label>Evidence</label><p>' + esc(o.evidence.join(', ')) + '</p></div>';
-  if (o.sql) m += '<details class="sql"><summary>Generated SQL</summary><code>' + esc(o.sql) + '</code></details>';
-  if (o.columns?.length) {
-    m += '<div class="answer-field"><label>Result</label><div class="result-wrap"><table><thead><tr>' + o.columns.map(c => '<th>' + esc(c) + '</th>').join('') + '</tr></thead><tbody>' + o.rows.map(row => '<tr>' + row.map(v => '<td>' + esc(v) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div></div>';
-  }
+  if (o.definition) m += '<p class="definition">' + esc(o.definition) + '</p>';
+  if (o.evidence?.length) m += '<div class="answer-field"><label>Evidence</label>' + chips(o.evidence, 'ev') + '</div>';
+  if (o.sql) m += '<div class="answer-field"><label>Query</label>' + sqlEditorHtml(o.sql, 'investigation.sql') + '</div>';
+  if (o.columns?.length) m += '<div class="answer-field"><label>Result</label>' + dataTableHtml(o.columns, o.rows) + '</div>';
   box.innerHTML = m;
 }
 
@@ -369,25 +451,34 @@ function render() {
   const f = document.querySelector('#f').value;
   const xs = data.filter(x => (!q || JSON.stringify(x).toLowerCase().includes(q)) && (f === 'ALL' || (x.decision || 'PENDING') === f));
   document.querySelector('#count').textContent = xs.length + ' candidates';
-  document.querySelector('#cards').innerHTML = xs.length ? xs.map(x => `
-    <article class="card ${(x.decision || '').toLowerCase()}">
+  document.querySelector('#cards').innerHTML = xs.length ? xs.map(x => {
+    const decisionClass = (x.decision || '').toLowerCase();
+    const confPct = Math.round((x.confidence || 0) * 100);
+    const sourceCount = (x.evidence || []).length;
+    const reasoningBody = x.sql
+      ? sqlEditorHtml(x.sql, 'metric.sql')
+      : ((x.joins.length || x.filters.length) ? chips([...x.joins, ...x.filters]) : '');
+    return `
+    <article class="card ${decisionClass}">
       <div class="head">
-        <h2>${esc(x.label)}</h2>
-        <span class="status">${esc(x.decision || 'PENDING')}</span>
+        <div><span class="kicker">Induced metric proposal</span><h2>${esc(x.label)}</h2></div>
+        <span class="status-pill ${decisionClass}">${esc(x.decision || 'PENDING')}</span>
       </div>
-      <div class="field"><label>Inferred definition</label><p>${esc(x.inferred_definition)}</p></div>
-      <div class="grid">
-        <div class="field"><label>Measure</label><code>${esc(x.measure)}</code></div>
-        <div class="field"><label>Grain</label><code>${esc(x.grain.join(', ') || 'not specified')}</code></div>
+      <p class="definition">${esc(x.inferred_definition)}</p>
+      <div class="chips">
+        <span class="chip measure">${esc(x.measure)}</span>
+        ${x.grain.length ? x.grain.map(g => `<span class="chip">${esc(g)}</span>`).join('') : '<span class="chip-empty">ungrouped</span>'}
       </div>
+      <details class="reasoning">
+        <summary>Show reasoning &amp; SQL <span class="conf">${confPct}% confidence &middot; ${sourceCount} source${sourceCount === 1 ? '' : 's'}</span></summary>
+        <div class="answer-field"><label>Evidence</label>${chips(x.evidence, 'ev')}</div>
+        ${x.profile_notes.length ? `<div class="evidence-meta">${esc(x.profile_notes.join(' · '))}</div>` : ''}
+        ${reasoningBody}
+        ${samplesHtml(x.samples)}
+      </details>
       <div class="grid">
         <div class="field"><label>Corrected business definition</label><textarea class="corrected-definition" placeholder="Optional canonical definition">${esc(x.corrected_definition)}</textarea></div>
         <div class="field"><label>Business aliases (comma-separated)</label><textarea class="aliases" placeholder="Example: revenue, net sales">${esc((x.aliases || []).join(', '))}</textarea></div>
-      </div>
-      <div class="evidence">
-        <b>Evidence:</b> ${esc(x.evidence.join(', ') || 'none')}<br>
-        <b>Profile:</b> ${esc(x.profile_notes.join('; ') || 'none')}
-        <details><summary>Sample data</summary>${sampleHtml(x.samples)}</details>
       </div>
       <div class="actions">
         <select class="decision">
@@ -399,7 +490,8 @@ function render() {
         <button onclick="save(this,'${esc(x.definition_id)}')">Save</button>
       </div>
     </article>
-  `).join('') : '<p>No candidates match this view.</p>';
+  `;
+  }).join('') : '<p>No candidates match this view.</p>';
 }
 
 async function save(b, id) {
@@ -481,7 +573,9 @@ def serve(
             store = domain_info["store"]
             if path == "/api/items":
                 self.send_body(
-                    200, "application/json", json.dumps(store.review_items(), default=str)
+                    200,
+                    "application/json",
+                    json.dumps(store.review_items(domain_info["catalog"]), default=str),
                 )
             elif path == "/":
                 options_html = "\n".join(
@@ -489,7 +583,7 @@ def serve(
                     for d in registry.list_domains()
                 )
                 html_body = PAGE_TEMPLATE.replace(
-                    "__ITEMS__", json.dumps(store.review_items(), default=str)
+                    "__ITEMS__", json.dumps(store.review_items(domain_info["catalog"]), default=str)
                 ).replace("__DOMAIN_OPTIONS__", options_html).replace("__CURRENT_DOMAIN__", domain_info["id"])
                 self.send_body(200, "text/html; charset=utf-8", html_body)
             else:
@@ -579,9 +673,19 @@ def main() -> int:
     p.add_argument("--domain", default="tpcds")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
+    p.add_argument(
+        "--naming-provider",
+        choices=("mock", "anthropic"),
+        default="mock",
+        help=(
+            "mock (default): deterministic, zero-cost, offline heuristic labels/definitions. "
+            "anthropic: Stage 5 LLM naming pass over join path, invariant filters, and profile "
+            "evidence; requires SEMANTIC_INDUCTION_API_KEY and SEMANTIC_INDUCTION_MODEL."
+        ),
+    )
     a = p.parse_args()
 
-    registry = init_multi_domain_registry()
+    registry = init_multi_domain_registry(naming_provider=a.naming_provider)
     serve(registry, a.domain, a.host, a.port)
     return 0
 

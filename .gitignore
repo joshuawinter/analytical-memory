@@ -8,6 +8,10 @@ __pycache__/
 .pytest_cache/
 *.duckdb
 data/tpch/labels.json
+data/tpch/labels.audit.jsonl
+data/tpch/labels.vocabulary.json
 data/fulfillment_demo/labels.json
+data/fulfillment_demo/labels.audit.jsonl
+data/fulfillment_demo/labels.vocabulary.json
 data/**/*.yaml
 .DS_Store

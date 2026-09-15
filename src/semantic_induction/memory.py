@@ -10,7 +10,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from semantic_induction.models import JoinEdge, Metric, Predicate, SemanticLayer, TableProfile
+from semantic_induction.models import ColumnProfile, JoinEdge, Metric, Predicate, SemanticLayer, TableProfile
 
 
 @dataclass(frozen=True)
@@ -274,6 +274,31 @@ def infer_metric_definition(metric: Metric) -> str:
     return ", ".join(clauses) + "."
 
 
+_LOW_CARDINALITY_LIMIT = 12
+_TOP_VALUES_SHOWN = 8
+
+
+def _observed_values_note(column_profile: ColumnProfile) -> str | None:
+    """Render a coded/categorical column's actual observed values as evidence.
+
+    A distinct count alone ("3 distinct values") tells a reviewer nothing
+    about what a coded dimension like ``l_returnflag`` means. The profiler
+    already samples ``top_values``; surfacing them is free context that was
+    being collected and discarded.
+    """
+    if not column_profile.top_values or column_profile.distinct_count > _LOW_CARDINALITY_LIMIT:
+        return None
+    observed = ", ".join(f"'{value}'" for value, _count in column_profile.top_values[:_TOP_VALUES_SHOWN])
+    return f"observed: {observed}"
+
+
+def _range_note(column_profile: ColumnProfile) -> str | None:
+    """Render a measure column's observed min/max as grounding evidence."""
+    if column_profile.min_value is None and column_profile.max_value is None:
+        return None
+    return f"range observed: {column_profile.min_value} to {column_profile.max_value}"
+
+
 def profile_notes(metric: Metric, profiles: dict[str, TableProfile] | None = None) -> tuple[str, ...]:
     """Summarize data evidence without treating it as a business definition."""
     if not profiles:
@@ -289,13 +314,25 @@ def profile_notes(metric: Metric, profiles: dict[str, TableProfile] | None = Non
         profile = profiles.get(table)
         if profile:
             notes.append(f"{_human_table(table)}: {profile.row_count:,} observed rows")
+    if metric.measure[1] != "*":
+        measure_table = _table_from_column(metric.measure[1])
+        if measure_table and measure_table in profiles:
+            measure_profile = profiles[measure_table].columns.get(metric.measure[1].split(".", 1)[1])
+            if measure_profile:
+                range_note = _range_note(measure_profile)
+                if range_note:
+                    notes.append(f"{_human_column(metric.measure[1])} {range_note}")
     for column in sorted(metric.grain):
         table = _table_from_column(column)
         if table and table in profiles:
             name = column.split(".", 1)[1]
             column_profile = profiles[table].columns.get(name)
             if column_profile:
-                notes.append(f"{_human_column(column)}: {column_profile.distinct_count:,} distinct values")
+                note = f"{_human_column(column)}: {column_profile.distinct_count:,} distinct values"
+                observed = _observed_values_note(column_profile)
+                if observed:
+                    note += f" ({observed})"
+                notes.append(note)
     return tuple(notes)
 
 
