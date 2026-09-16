@@ -15,3 +15,4 @@ data/fulfillment_demo/labels.audit.jsonl
 data/fulfillment_demo/labels.vocabulary.json
 data/**/*.yaml
 .DS_Store
+*.log

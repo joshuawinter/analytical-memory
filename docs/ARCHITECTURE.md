@@ -728,17 +728,32 @@ question -> retrieve concepts and evidence -> interpret intent
         search(question)
         review_items()
         investigate(question)
+        record_decision(definition_id, decision, rationale, decided_by, ...)
         ```
 
-        The browser and CLI now use this boundary. MCP is the next thin adapter over
-        the same service, exposing approved memory and investigation capabilities to
-        corporate agents without making MCP the source of truth or adding an
-        unrestricted SQL tool.
+        The browser and CLI use this boundary, and MCP is a thin adapter over the
+        same service -- `record_decision` reaches the same `LabelingStore.label`
+        call and the same audit ledger regardless of which client invoked it.
+        Exposing approval as an MCP tool (`record_review_decision`) means an MCP
+        client is capable of writing a ruling, not merely reading memory, which is
+        exactly why the write boundary is enforced in the tool contract, not left
+        to client discretion: the decision and rationale must originate from the
+        human the client is acting for, never fabricated by the agent. MCP does
+        not add an unrestricted SQL tool and does not become the source of truth --
+        it is the interoperability boundary; the analytical memory, governance
+        decisions, and investigation service remain the product core.
+
+        A `.mcp.json` at the repo root registers this project's MCP server for
+        Claude Code itself, and `.claude/skills/govern/` encodes the human-in-the-
+        loop contract above as an explicit, reviewable instruction set -- the
+        governance protocol as an artifact, not just a convention held in one
+        person's head. This makes Claude Code itself a viable governance
+        interface alongside the browser UI, not a replacement for the approval
+        gate: the skill's entire job is refusing to approve anything the human
+        did not actually decide.
 
         The MCP design rationale and source reference are recorded in the
-        [MCP research note](../research/mcp.md). MCP is an interoperability boundary
-        for corporate agents; the analytical memory, governance decisions, and
-        investigation service remain the product core.
+        [MCP research note](../research/mcp.md).
 
 Facts, interpretations, hypotheses, and human decisions remain distinct. An
 induced metric is evidence-backed structure; it is not automatically a

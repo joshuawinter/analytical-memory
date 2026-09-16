@@ -5,6 +5,7 @@ import json
 import sys
 from typing import Any, TextIO
 
+from semantic_induction.labeling import LabelingError
 from semantic_induction.services import InvestigationService, investigation_payload
 
 SERVER_INFO = {
@@ -52,6 +53,47 @@ TOOLS = [
                 },
             },
             "required": ["question"],
+        },
+    },
+    {
+        "name": "record_review_decision",
+        "description": (
+            "Record a human's APPROVE/REJECT/CLARIFY ruling on a metric candidate, with rationale, on the "
+            "tamper-evident audit ledger. The decision and rationale must come from the human the calling "
+            "client is acting for -- never fabricate a decision or invent a rationale on their behalf. "
+            "decided_by must identify that human, not the calling agent."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "definition_id": {
+                    "type": "string",
+                    "description": "The definition_id from get_review_candidates identifying which candidate this ruling is for.",
+                },
+                "decision": {
+                    "type": "string",
+                    "enum": ["APPROVE", "REJECT", "CLARIFY"],
+                },
+                "rationale": {
+                    "type": "string",
+                    "description": "Why -- ideally a generalizable rule, not just a verdict. Required.",
+                },
+                "decided_by": {
+                    "type": "string",
+                    "description": "Who is actually making this ruling (a name or identifier for the human), not the calling agent.",
+                },
+                "corrected_definition": {
+                    "type": "string",
+                    "description": "Optional canonical business definition, only used when decision is APPROVE.",
+                    "default": "",
+                },
+                "aliases": {
+                    "type": "string",
+                    "description": "Optional comma-separated business aliases, only used when decision is APPROVE.",
+                    "default": "",
+                },
+            },
+            "required": ["definition_id", "decision", "rationale", "decided_by"],
         },
     },
 ]
@@ -204,6 +246,38 @@ def handle_rpc_message(msg: dict[str, Any], service: InvestigationService) -> di
                         }
                     ],
                     "isError": result.status in {"UNSUPPORTED", "EXECUTION_FAILED"},
+                },
+            }
+
+        if tool_name == "record_review_decision":
+            try:
+                resolution = service.record_decision(
+                    args.get("definition_id", ""),
+                    args.get("decision", ""),
+                    args.get("rationale", ""),
+                    args.get("decided_by", ""),
+                    args.get("corrected_definition", ""),
+                    args.get("aliases", ""),
+                )
+            except LabelingError as error:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": msg_id,
+                    "result": {
+                        "content": [{"type": "text", "text": f"REJECTED: {error}"}],
+                        "isError": True,
+                    },
+                }
+            text = (
+                f"RECORDED: {resolution.decision} on {resolution.target_id} "
+                f"by {resolution.decided_by} ({resolution.resolution_id})"
+            )
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [{"type": "text", "text": text}],
+                    "isError": False,
                 },
             }
 

@@ -6,7 +6,7 @@ from typing import Any
 
 from semantic_induction.investigate import InvestigationResult, investigate
 from semantic_induction.labeling import LabelingStore
-from semantic_induction.memory import RetrievalHit, retrieve
+from semantic_induction.memory import Resolution, RetrievalHit, retrieve
 from semantic_induction.models import Catalog
 
 
@@ -20,10 +20,32 @@ class InvestigationService:
         return retrieve(question, self.store.memory, limit=limit)
 
     def review_items(self) -> list[dict[str, object]]:
-        return self.store.review_items()
+        return self.store.review_items(self.catalog)
 
     def investigate(self, question: str) -> InvestigationResult:
         return investigate(question, self.store, self.catalog, self.connection)
+
+    def record_decision(
+        self,
+        definition_id: str,
+        decision: str,
+        rationale: str,
+        decided_by: str,
+        corrected_definition: str = "",
+        aliases: str = "",
+    ) -> Resolution:
+        """Record a human's Stage 4c ruling. The decision and rationale must
+
+        come from the human on the other end of whatever client called this
+        -- an MCP client (Claude Code included) must never fabricate
+        ``decided_by`` or invent a rationale on the reviewer's behalf. This
+        is the same call ``labeling_app.py``'s ``/label`` endpoint makes;
+        every client goes through one path, one audit trail.
+        """
+        resolution = self.store.label(definition_id, decision, rationale, decided_by)
+        if resolution.decision == "APPROVE" and (corrected_definition or aliases):
+            self.store.enrich(definition_id, corrected_definition, aliases)
+        return resolution
 
 
 def investigation_payload(result: InvestigationResult) -> dict[str, object]:

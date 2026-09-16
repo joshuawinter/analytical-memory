@@ -110,6 +110,70 @@ def test_mcp_run_approved_investigation_and_approval_gate():
     assert "STATUS: NEEDS_REVIEW" in text_unapproved
 
 
+def test_mcp_record_review_decision_writes_to_the_same_audit_trail_every_client_uses():
+    service = _test_service(approved=False)
+    call_req = {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "tools/call",
+        "params": {
+            "name": "record_review_decision",
+            "arguments": {
+                "definition_id": "metric:fulfillment:otif",
+                "decision": "APPROVE",
+                "rationale": "Matches the operations team's on-time-in-full definition.",
+                "decided_by": "j.parsons",
+                "corrected_definition": "On-time, in-full delivery rate.",
+                "aliases": "OTIF rate",
+            },
+        },
+    }
+
+    resp = handle_rpc_message(call_req, service)
+
+    assert resp["result"]["isError"] is False
+    text = resp["result"]["content"][0]["text"]
+    assert "RECORDED: APPROVE" in text
+    assert "j.parsons" in text
+    resolution = service.store.memory.resolutions["metric:fulfillment:otif"]
+    assert resolution.rationale == "Matches the operations team's on-time-in-full definition."
+    assert service.store.enrichments["metric:fulfillment:otif"]["corrected_definition"] == "On-time, in-full delivery rate."
+
+    # Now the tool the reviewer actually reads from should reflect the ruling.
+    items_req = {
+        "jsonrpc": "2.0",
+        "id": 9,
+        "method": "tools/call",
+        "params": {"name": "get_review_candidates", "arguments": {}},
+    }
+    items = json.loads(handle_rpc_message(items_req, service)["result"]["content"][0]["text"])
+    assert items[0]["decision"] == "APPROVE"
+
+
+def test_mcp_record_review_decision_rejects_missing_rationale_without_recording_anything():
+    service = _test_service(approved=False)
+    call_req = {
+        "jsonrpc": "2.0",
+        "id": 10,
+        "method": "tools/call",
+        "params": {
+            "name": "record_review_decision",
+            "arguments": {
+                "definition_id": "metric:fulfillment:otif",
+                "decision": "APPROVE",
+                "rationale": "",
+                "decided_by": "j.parsons",
+            },
+        },
+    }
+
+    resp = handle_rpc_message(call_req, service)
+
+    assert resp["result"]["isError"] is True
+    assert "REJECTED" in resp["result"]["content"][0]["text"]
+    assert "metric:fulfillment:otif" not in service.store.memory.resolutions
+
+
 def test_mcp_resources():
     service = _test_service()
     list_req = {"jsonrpc": "2.0", "id": 6, "method": "resources/list"}

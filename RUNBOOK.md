@@ -403,9 +403,35 @@ To configure in an MCP client (such as Claude Desktop or Cursor), add to `claude
 ```
 
 The server provides:
-- **Tools:** `search_business_memory`, `get_review_candidates`, `run_approved_investigation`
+- **Tools:** `search_business_memory`, `get_review_candidates`, `run_approved_investigation`, `record_review_decision`
 - **Resources:** `memory://concepts`, `memory://metric_definitions`, `memory://evidence`, `memory://resolutions`
 - Strict approval enforcement: unapproved questions return `NEEDS_REVIEW`. No raw SQL execution is permitted.
+- `record_review_decision` writes to the same `LabelingStore`/audit ledger every client shares -- see the write-boundary contract in `docs/ARCHITECTURE.md`'s "Agent interface boundary" section before wiring this into any MCP client that could act without a human confirming each decision.
+
+### Connect Claude Code itself (this repo already does)
+
+A `.mcp.json` at the repo root registers this server for Claude Code as a
+project-scoped MCP server (edit its `--domain` argument to switch domains, then
+reconnect). Claude Code will prompt to approve a project-scoped server the
+first time it loads one. Once connected, `.claude/skills/govern/SKILL.md`
+teaches Claude Code the human-in-the-loop contract: it will list candidates,
+search memory, and run approved investigations freely, but it will not call
+`record_review_decision` without an explicit decision from you in the
+conversation, and it will not put its own name in `decided_by`. Ask it to
+"review the pending candidates" or "why did OTIF decline" to see it in action.
+
+**The `command`/`args` paths are absolute, not `${CLAUDE_PROJECT_DIR}`-relative,
+on purpose.** Anthropic's own docs describe `${CLAUDE_PROJECT_DIR}` (with a
+`${CLAUDE_PROJECT_DIR:-.}` default form) as the portable way to write this. It
+does not work in the Claude Code VS Code extension build this project was
+developed against (`cc_version=2.1.272.x`, `cc_entrypoint=claude-vscode`):
+the connection fails in under 200ms with `Server stderr: The system cannot
+find the path specified`, confirmed in `Claude VSCode.log`, both before and
+after adding the `:-.` fallback -- the variable is never being set, so it
+falls back to `.`, which is not the project root from wherever the extension
+spawns the process. If you move this repo, or another `claude-vscode` build
+fixes the substitution, revisit this -- it is a workaround for a confirmed
+extension-specific bug, not the documented-correct form.
 
 ## 17. Export Induced Model to Apache Ossie Format
 
