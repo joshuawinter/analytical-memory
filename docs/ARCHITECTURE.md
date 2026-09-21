@@ -752,6 +752,25 @@ question -> retrieve concepts and evidence -> interpret intent
         gate: the skill's entire job is refusing to approve anything the human
         did not actually decide.
 
+        **Interface tiering is a deliberate choice, not a placeholder.** The
+        primary analyst surface is chat-plus-artifacts in a browser (Claude
+        Enterprise's own web/desktop client, or an equivalent), because that is
+        the near-zero-friction path for corporate IT -- no new desktop binary to
+        vet, no MDM policy, no standalone vendor-risk review. VS Code + Claude
+        Code is the power-user "explore mode" for the minority of reviewers
+        already comfortable in dev tools -- adding one more extension to an
+        already-approved editor is a trivial ask compared to approving a new
+        application for a broad analyst rollout. Reaching Claude Enterprise means
+        this MCP server hosted somewhere network-reachable rather than spawned as
+        a local stdio process, which is a real, not cosmetic, gap: it needs an
+        HTTP/SSE transport (today only stdio is implemented), `decided_by` bound
+        to an authenticated identity from the customer's SSO/SCIM rather than the
+        free-text field it is today, and the L1/L2 authorization this section
+        already assumes conceptually but does not yet enforce in code. None of
+        that is required to demonstrate the interface, which this codebase
+        already does locally end-to-end -- it is required to run it for more
+        than one trusted person at a time.
+
         The MCP design rationale and source reference are recorded in the
         [MCP research note](../research/mcp.md).
 

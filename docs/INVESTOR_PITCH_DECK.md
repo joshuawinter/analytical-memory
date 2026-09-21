@@ -135,6 +135,17 @@ clients, while Apache Ossie and native integrations publish approved semantic
 assets into BI and semantic-layer ecosystems. The customer's memory survives
 the next model, copilot, or analytics platform.
 
+That additive claim has a concrete deployment shape, not just a philosophical
+one. The primary analyst surface is chat plus artifacts in a browser --
+Claude Enterprise's own client, in the pilot -- because that is the
+near-zero-friction path through corporate IT: no new desktop binary to
+approve, no MDM policy, no standalone vendor-risk review, just a URL behind
+SSO the customer already runs. Power-user exploration lives in developer
+tools the technical minority already has installed and approved, not a
+second consumer app. The system does not ask IT to adopt anything new to see
+value; it asks them to point an interface they already trust at a governed
+tool.
+
 **Initial proving ground:** operational domains where small definitional errors
 create visible cost, such as fulfillment, revenue operations, and supply chain.
 
