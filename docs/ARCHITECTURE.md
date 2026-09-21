@@ -20,6 +20,18 @@ meaning and enough usage makes meaning recoverable.
 **Where the analogy holds:** meaning is recoverable from usage. Nobody needs to
 have written the definition down for it to be present in the corpus.
 
+A single artifact — one query, one stored procedure — is just syntax:
+structurally valid, semantically empty, the alphabet before it spells
+anything. Meaning shows up only at the level of the corpus, in what recurs:
+which filters travel together often enough to be a rule rather than a choice,
+which join path repeats, which literal value encodes a real category. That is
+the same principle distributional semantics runs on — you know a word by the
+company it keeps — applied to SQL first because TPC-DS supplied ground truth
+to check the method against, not because SQL is special. Every later tranche
+of this corpus (execution logs, human channels, code and stored procs,
+integration workflows — see "Corpus expansion" below) is the same
+alphabet-to-language transformation run on a different substrate.
+
 **Where it strains, and why it shapes the design:**
 
 - *Sparse, not redundant.* A general corpus expresses each concept thousands of
