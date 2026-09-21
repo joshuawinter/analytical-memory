@@ -22,8 +22,19 @@ forward:
 - Every AI deployment inherits ambiguity without knowing where it came from.
 - Every departure removes context that cannot be recovered from a catalog.
 
+**Every AI-for-data product on the market takes the same shape: a question in,
+SQL out.** Text2SQL already works reasonably well, which is exactly the
+limit -- a model can write plausible SQL from a schema alone, but it cannot
+know which of several plausible interpretations is the one this company
+already settled on, because that decision was never written down anywhere
+text2SQL reads. It lives in the SQL the company already wrote, argued over,
+and approved.
+
 **The opportunity:** discover patterns of operational meaning already present
-in enterprise assets, then maintain them as a governed corporate memory.
+in enterprise assets, then maintain them as a governed corporate memory. The
+category this creates is **SQL2Text, not text2SQL** -- and it is the layer
+text2SQL needs underneath it to be reliable at enterprise scale, not a
+competing bet against it.
 
 ---
 
@@ -189,6 +200,12 @@ what it knows, how it knows it, and who decided it was authoritative.
   not SQL, metadata, or semantic layers.
 - The category statement is "system of record for analytical meaning." Use the
   buyer's language where it is more specific.
+- With a technical buyer, "SQL2Text, not text2SQL" lands the wedge faster than
+  the category statement does -- it's their own vocabulary, flipped. Keep it
+  framed as the layer text2SQL needs underneath it, not a claim that text2SQL
+  doesn't work; Tier 3's own raw-schema arm shows an LLM writes plausible SQL
+  from a schema alone reasonably well. The gap is knowing which interpretation
+  this company already settled on -- that's not in the schema.
 - The differentiated asset is not the initial inference. It is the accumulated
   evidence-to-decision history and organization-specific vocabulary it produces.
 - Make the experience concrete with the voice/chat example. The user sees a
