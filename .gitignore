@@ -16,3 +16,5 @@ data/fulfillment_demo/labels.vocabulary.json
 data/**/*.yaml
 .DS_Store
 *.log
+# SOMA ships no LICENSE file -- fetched fresh, never committed. See fetch_soma.py.
+data/soma/
