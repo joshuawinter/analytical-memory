@@ -61,6 +61,41 @@ def test_induce_canonicalizes_inner_join_edge_direction_across_queries():
     assert len(metric.join_path) == 1
 
 
+def test_induce_canonicalization_flips_time_offset_sign_with_direction():
+    # A lag join written from either side is the same predicate: `a.d =
+    # b.d - interval 1 month` and `b.d = a.d + interval 1 month` describe the
+    # same relationship. Canonicalizing direction without also flipping the
+    # offset's sign would either fail to merge them or, worse, merge a lag
+    # join with a lead join that happens to share column names.
+    catalog = {
+        "lineitem": {"l_extendedprice": "DECIMAL(15,2)", "l_shipdate": "DATE"},
+        "part": {"p_shipdate": "DATE"},
+    }
+    facts = [
+        QueryFacts(
+            query_id="q_a",
+            tables={"lineitem", "part"},
+            join_edges=[JoinEdge("lineitem.l_shipdate", "part.p_shipdate", "INNER", "-1 month")],
+            aggregations=[Agg("SUM", "lineitem.l_extendedprice")],
+        ),
+        QueryFacts(
+            query_id="q_b",
+            tables={"lineitem", "part"},
+            join_edges=[JoinEdge("part.p_shipdate", "lineitem.l_shipdate", "INNER", "+1 month")],
+            aggregations=[Agg("SUM", "lineitem.l_extendedprice")],
+        ),
+    ]
+    stats = aggregate(facts)
+
+    layer = induce(stats, catalog, facts, min_support=2)
+
+    metric = next(m for m in layer.metrics if m.measure == ("SUM", "lineitem.l_extendedprice"))
+    assert metric.support == 2
+    assert len(metric.join_path) == 1
+    assert metric.join_path[0].left == "lineitem.l_shipdate"
+    assert metric.join_path[0].time_offset == "-1 month"
+
+
 def test_entity_classification_covers_catalog_tables():
     catalog, _facts, stats = _corpus()
 

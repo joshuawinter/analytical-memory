@@ -26,6 +26,11 @@ class JoinEdge:
     left: str  # qualified "table.column"
     right: str
     join_type: str  # INNER, LEFT, ...
+    # Signed offset applied to `right` before comparing to `left`, e.g. "-1 month"
+    # for `left.date = right.date - interval 1 month`, or "+1" for `left.rn =
+    # right.rn + 1`. None for a plain equi-join. See ARCHITECTURE.md's
+    # "Metric-to-metric lineage" section for why this is load-bearing.
+    time_offset: str | None = None
 
 
 @dataclass(frozen=True)

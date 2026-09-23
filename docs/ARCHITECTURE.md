@@ -953,6 +953,98 @@ not human intent. Tag every query with its origin (human ad-hoc, scheduled job,
 BI tool, application) and weight support accordingly. One analyst writing a query
 by hand is worth more signal than a dashboard firing it nightly for two years.
 
+### Metric-to-metric lineage — the dbt-path composite case
+
+`fetch_soma.py` and `compile_soma.py` fetch and compile SOMA's B2B SaaS metrics
+(github.com/Levers-Labs/SOMA-B2B-SaaS) as a second, independently-governed
+ground truth — 407 metric definitions, 115 dbt models — to test whether
+induction generalizes past TPC-DS. 106 of those 407 are marked `Composite`:
+defined in terms of other metrics, not raw columns (`GrossDollRetn = 1 -
+GrossRevChurnRt`). Nothing in Stages 1–4 can represent that today, and testing
+the gap against the actual compiled SQL — not just SOMA's abstract `expression`
+field — surfaced a sharper problem than "add an expression field."
+
+**Composition is structural, not textual.** SOMA's compiled SQL never
+recomputes a composite from raw tables — it selects from another metric's
+materialized output:
+
+```sql
+select ..., 1 - metric_value as metric_value
+from {{ ref('ga_cube_gross_revenue_churn_rate') }}
+```
+
+Every one of SOMA's 17 compiled composite models does this — a `FROM`/`JOIN`
+target that resolves to another metric's output, never a base table. Same
+pattern as dbt's own `ref()` DAG, LookML's `${other_view.metric}`, or a
+Tableau calc-of-a-calc: any governed semantic layer with reusable metrics is
+built this way, because it is the only way a revision to the base metric
+propagates instead of silently forking. So Stage 1's job here is a resolution
+rule — is this relation a registered `MetricDefinition`'s output? — not a new
+expression parser.
+
+**But the join predicate carries real semantics extraction currently drops.**
+10 of SOMA's 17 composite queries join components at a time offset
+(`tr.metric_date = cr.metric_date - interval 1 month`, `- interval 12 month`
+for the annualized CMGR variants), not a same-period equi-join — and it
+recurs on purpose: every churn-rate, growth-rate, and CMGR composite measures
+the current period against a prior baseline. Separately, null-handling
+differs per composite independent of which components are involved: the same
+four revenue components (new/expansion/contraction/churned) are `INNER
+JOIN`ed for `quick_ratio` (a ratio, where a missing component should exclude
+the period) and `FULL OUTER JOIN` plus `coalesce(...,0)` for `net_revenue` (a
+sum, where a missing component is legitimately zero). Composition semantics
+live on the composite, not the components — they cannot be inferred from the
+reference graph alone.
+
+`extract.py`'s `_join_edges` cannot see either of these today: `_is_column_pair()`
+requires both sides of an equality to be a bare `exp.Column`, so any predicate
+with arithmetic on one side (`metric_date - interval 1 month`, or TPC-DS's
+`v1.rn = v1_lag.rn + 1`) is silently skipped, not flagged. Confirmed
+independently in TPC-DS: q47 and q57's `v1`/`v1_lag`/`v1_lead` period-over-period
+self-join drops exactly the predicate that makes it a lag join (`rn = rn + 1`)
+while keeping the surrounding dimensional predicates, so extraction records an
+ordinary self-join and loses the one thing that made it a period comparison.
+TPC-H never triggers this — its date logic lives entirely in `WHERE`-clause
+range filters, never a join predicate — which is why the gap went unnoticed
+until SOMA's composites pushed the frequency up (10/17 vs. 2/99).
+
+**Design decision.** A two-layer metric model, not a bigger version of the
+current one:
+
+- **Atomic metrics** (301 of SOMA's 407, and everything TPC-H/TPC-DS induce
+  today) keep `MetricDefinition` exactly as-is: `measure: (aggregation,
+  column)` over grain/filters.
+- **Composite metrics** get `component_definition_ids: tuple[str, ...]` — live
+  references to other `MetricDefinition`s, never a flattened or copied
+  expression, so a resolution that revises a component (e.g.
+  `GrossRevChurnRt`'s grain) propagates to every composite referencing it
+  instead of leaving them silently stale. The component-to-composite join
+  reuses `JoinEdge`, extended with two fields: a signed `time_offset`
+  (nullable interval) and a `null_handling` mode (`required` / `coalesced`).
+  `composition_expression` is stored as the raw formula text (e.g. `"1 -
+  {GrossRevChurnRtₜ}"`), ungoverned — narrated by Stage 5 like any other
+  label, not interpreted by the induction engine.
+
+**Deliberately out of scope for Phase 3** — no general arithmetic expression
+evaluator; that is Phase 4, once the reference graph is trustworthy. Two
+things do need to change now, both minimal:
+
+- Fix `_is_column_pair()` to accept `column [+-] interval-or-literal` on one
+  side, so the join edge is recorded with its offset instead of silently
+  dropped. This corrects existing Stage 1/2 mechanics rather than adding new
+  scope — it was already wrong for TPC-DS.
+- Stage 4b gains a conflict class: **component drift** — a composite whose
+  query-level grain, offset, or null-handling does not match what its
+  referenced component was itself induced with. Detection is the same
+  group-by-and-compare shape Stage 4b already uses for measure/grain
+  disagreement, applied to a composite's declared components instead of two
+  competing signatures for the same measure.
+
+Stage 6 validation becomes recursive for composites: validate each component
+independently first, then validate the composite's reference structure
+(right components, right offset, right null-handling) given already-validated
+components — not a bigger flat Tier 3 comparison.
+
 ## Scope lock and next build order
 
 The following mechanics are now the locked foundation rather than an open-ended

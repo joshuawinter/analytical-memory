@@ -77,7 +77,11 @@ def _canonical_edge(edge: JoinEdge) -> JoinEdge:
     edges are canonicalized.
     """
     if edge.join_type == "INNER" and edge.right < edge.left:
-        return JoinEdge(left=edge.right, right=edge.left, join_type=edge.join_type)
+        # Swapping sides inverts "left = right + offset" to "right = left - offset".
+        offset = edge.time_offset
+        if offset:
+            offset = f"-{offset[1:]}" if offset.startswith("+") else f"+{offset[1:]}"
+        return JoinEdge(left=edge.right, right=edge.left, join_type=edge.join_type, time_offset=offset)
     return edge
 
 

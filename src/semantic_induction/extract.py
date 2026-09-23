@@ -42,9 +42,48 @@ def _columns(expression: exp.Expression | list[exp.Expression]) -> list[str]:
     return [_column_name(column) for column in expression.find_all(exp.Column)]
 
 
-def _is_column_pair(expression: exp.Expression) -> bool:
-    return isinstance(expression.left, exp.Column) and isinstance(
-        expression.right, exp.Column
+def _offset_magnitude(expression: exp.Expression) -> str | None:
+    """Render an INTERVAL or bare numeric literal as an unsigned offset, e.g. '1 month' or '1'."""
+    if isinstance(expression, exp.Interval):
+        amount = expression.this
+        if amount is None:
+            return None
+        unit = expression.unit
+        amount_text = amount.this if isinstance(amount, exp.Literal) else None
+        if amount_text is None:
+            return None
+        return f"{amount_text} {unit.this}" if unit is not None else str(amount_text)
+    if isinstance(expression, exp.Literal) and not expression.is_string:
+        return str(expression.this)
+    return None
+
+
+def _resolve_offset_side(expression: exp.Expression) -> tuple[exp.Column, str | None] | None:
+    """Resolve `column` or `column +/- literal-or-interval` to (column, signed offset).
+
+    Returns None for anything else (a CTE alias, a CASE expression, ...) --
+    those are query-local implementation details, not a join edge.
+    """
+    if isinstance(expression, exp.Column):
+        return expression, None
+    if isinstance(expression, (exp.Add, exp.Sub)) and isinstance(expression.this, exp.Column):
+        magnitude = _offset_magnitude(expression.expression)
+        if magnitude is None:
+            return None
+        sign = "-" if isinstance(expression, exp.Sub) else "+"
+        return expression.this, f"{sign}{magnitude}"
+    return None
+
+
+def _negate_offset(offset: str) -> str:
+    return f"-{offset[1:]}" if offset.startswith("+") else f"+{offset[1:]}"
+
+
+def _is_join_comparison(expression: exp.Expression) -> bool:
+    """True if both sides are a column, optionally offset -- join territory, not a filter."""
+    return (
+        _resolve_offset_side(expression.left) is not None
+        and _resolve_offset_side(expression.right) is not None
     )
 
 
@@ -52,17 +91,28 @@ def _join_edges(ast: exp.Expression) -> list[JoinEdge]:
     edges: list[JoinEdge] = []
     seen: set[JoinEdge] = set()
     for comparison in ast.find_all(exp.EQ):
-        if not _is_column_pair(comparison):
+        resolved_left = _resolve_offset_side(comparison.left)
+        resolved_right = _resolve_offset_side(comparison.right)
+        if resolved_left is None or resolved_right is None:
             continue
-        left = _column_name(comparison.left)
-        right = _column_name(comparison.right)
+        left_column, left_offset = resolved_left
+        right_column, right_offset = resolved_right
+        if left_offset and right_offset:
+            # Arithmetic on both sides isn't a resolvable single join offset.
+            continue
+        left = _column_name(left_column)
+        right = _column_name(right_column)
         if left.split(".")[0] == right.split(".")[0]:
             continue
+        # Normalize to "left = right + time_offset": arithmetic found on the
+        # left side of `=` is on the other side of the equation from where it
+        # was written, so its sign flips.
+        time_offset = _negate_offset(left_offset) if left_offset else right_offset
         join = comparison.find_ancestor(exp.Join)
         join_type = "INNER"
         if join is not None:
             join_type = (join.args.get("side") or join.args.get("kind") or "INNER").upper()
-        edge = JoinEdge(left, right, join_type)
+        edge = JoinEdge(left, right, join_type, time_offset)
         if edge not in seen:
             seen.add(edge)
             edges.append(edge)
@@ -117,7 +167,7 @@ def _predicates(ast: exp.Expression) -> list[Predicate]:
                 else:
                     value = ""
             else:
-                if _is_column_pair(expression):
+                if _is_join_comparison(expression):
                     continue
                 column = expression.left
                 value = _predicate_value(expression.right)
