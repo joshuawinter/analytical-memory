@@ -107,6 +107,10 @@ class QueryFacts:
     column_lineage: dict[str, ColumnLineage] = field(default_factory=dict)
     correlations: list[Correlation] = field(default_factory=list)
     set_operations: list[SetOperation] = field(default_factory=list)
+    # relation alias/name -> definition_id, for FROM/JOIN sources that resolve
+    # to another metric's materialized output rather than a raw catalog table.
+    # See ARCHITECTURE.md's "Metric-to-metric lineage" section.
+    metric_references: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -118,6 +122,12 @@ class Query:
 
 # Table -> {column: type}
 Catalog = dict[str, dict[str, str]]
+
+# Materialized relation name -> the definition_id of the MetricDefinition it
+# is the output of (e.g. a dbt-compiled composite-metric table). Lets Stage 1
+# resolve a FROM/JOIN source as a metric reference instead of an unknown or
+# raw table. See ARCHITECTURE.md's "Metric-to-metric lineage" section.
+MetricOutputs = dict[str, str]
 
 
 @dataclass(frozen=True)

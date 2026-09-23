@@ -45,6 +45,45 @@ def test_separates_comma_join_edges_from_filters():
     }
 
 
+def test_resolves_a_registered_metric_output_instead_of_an_unknown_table():
+    # Mirrors the shape SOMA's compiled composite-metric models actually use
+    # (e.g. ga_cube_gross_dollar_retention selecting `1 - metric_value` from
+    # a fully-qualified `"soma"."main"."ga_cube_gross_revenue_churn_rate"`):
+    # a composite never recomputes from raw tables, it selects from another
+    # metric's materialized output. Without a metric_outputs registry, that
+    # relation isn't in the catalog and would either be dropped or
+    # misclassified as an unknown raw table by Stage 3/4. See
+    # ARCHITECTURE.md's "Metric-to-metric lineage" section.
+    ast = sqlglot.parse_one(
+        'SELECT metric_date, 1 - metric_value AS metric_value '
+        'FROM "warehouse"."main"."component_metric_cube"',
+        dialect="duckdb",
+    )
+
+    facts = extract_facts(
+        "composite_q",
+        ast,
+        catalog={},
+        metric_outputs={"component_metric_cube": "def_component_metric"},
+    )
+
+    assert facts.tables == set()
+    assert facts.metric_references == {"component_metric_cube": "def_component_metric"}
+
+
+def test_unregistered_relation_still_falls_back_to_an_unknown_table():
+    ast = sqlglot.parse_one(
+        'SELECT metric_date, 1 - metric_value AS metric_value '
+        'FROM "warehouse"."main"."component_metric_cube"',
+        dialect="duckdb",
+    )
+
+    facts = extract_facts("composite_q", ast)
+
+    assert facts.tables == {"component_metric_cube"}
+    assert facts.metric_references == {}
+
+
 def test_extracts_entire_tpch_corpus():
     facts = extract_corpus(_queries().values())
 

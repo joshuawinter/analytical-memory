@@ -11,6 +11,7 @@ from semantic_induction.models import (
     ColumnLineage,
     Correlation,
     JoinEdge,
+    MetricOutputs,
     Predicate,
     QueryBlock,
     QueryFacts,
@@ -192,15 +193,43 @@ def _tables(
     ast: exp.Expression,
     catalog: Catalog | None = None,
     cte_names: set[str] | None = None,
+    metric_outputs: MetricOutputs | None = None,
 ) -> set[str]:
     cte_names = cte_names or set()
     tables: set[str] = set()
     for table in ast.find_all(exp.Table):
         if table.name in cte_names:
             continue
+        if metric_outputs and table.name in metric_outputs:
+            continue
         if catalog is None or table.name in catalog:
             tables.add(table.name)
     return tables
+
+
+def _metric_references(
+    ast: exp.Expression,
+    metric_outputs: MetricOutputs | None = None,
+) -> dict[str, str]:
+    """FROM/JOIN relations that resolve to another metric's materialized output.
+
+    A composite metric never recomputes from raw tables -- it selects from
+    another metric's output (e.g. SOMA's compiled `ref('ga_cube_gross_...')`),
+    the same DAG-of-references pattern as dbt/LookML/Tableau calc-of-calc. A
+    relation matching a registered MetricDefinition's output is a component
+    reference, not raw data, and must not be folded into `tables` -- Stage
+    3/4's FACT/DIM classification and grain heuristics assume `tables` is
+    physical catalog relations. See ARCHITECTURE.md's "Metric-to-metric
+    lineage" section.
+    """
+    if not metric_outputs:
+        return {}
+    references: dict[str, str] = {}
+    for table in ast.find_all(exp.Table):
+        definition_id = metric_outputs.get(table.name)
+        if definition_id is not None:
+            references[table.alias or table.name] = definition_id
+    return references
 
 
 def _lineage_for_select(
@@ -416,13 +445,14 @@ def extract_facts(
     query_id: str,
     ast: exp.Expression,
     catalog: Catalog | None = None,
+    metric_outputs: MetricOutputs | None = None,
 ) -> QueryFacts:
     """Extract Stage 2 facts from one qualified SQL expression."""
     blocks, lineage = _query_blocks(ast, catalog)
     blocks = _subquery_blocks(ast, catalog, blocks)
     return QueryFacts(
         query_id=query_id,
-        tables=_tables(ast, catalog, _cte_names(ast)),
+        tables=_tables(ast, catalog, _cte_names(ast), metric_outputs),
         join_edges=_join_edges(ast),
         aggregations=_aggregations(ast),
         group_by=_group_by(ast),
@@ -434,12 +464,14 @@ def extract_facts(
         column_lineage=lineage,
         correlations=_correlations(ast, blocks),
         set_operations=_set_operations(ast),
+        metric_references=_metric_references(ast, metric_outputs),
     )
 
 
 def extract_corpus(
     queries: Iterable[object],
     catalog: Catalog | None = None,
+    metric_outputs: MetricOutputs | None = None,
 ) -> list[QueryFacts]:
     """Extract facts for objects exposing ``id`` and ``ast`` attributes."""
-    return [extract_facts(query.id, query.ast, catalog) for query in queries]
+    return [extract_facts(query.id, query.ast, catalog, metric_outputs) for query in queries]
