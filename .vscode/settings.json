@@ -7,26 +7,6 @@
         "*.tsv": "duckdb.dataFileViewer",
         "*.xlsx": "duckdb.dataFileViewer"
     },
-    "duckdb.databases": [
-        {
-            "alias": "tpch",
-            "type": "file",
-            "path": "c:\\Users\\jwp\\semantic-induction-poc\\tpch.duckdb",
-            "readOnly": true,
-            "attached": true
-        },
-        {
-            "alias": "soma",
-            "type": "file",
-            "path": "c:\\Users\\jwp\\semantic-induction-poc\\data\\soma\\soma.duckdb",
-            "attached": true
-        },
-        {
-            "alias": "tpcds",
-            "type": "file",
-            "path": "c:\\Users\\jwp\\semantic-induction-poc\\data\\tpcds\\tpcds.duckdb",
-            "attached": true
-        }
-    ],
-    "duckdb.defaultDatabase": "tpcds"
+    "duckdb.databases": [],
+    "duckdb.defaultDatabase": "soma"
 }
