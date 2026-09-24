@@ -32,7 +32,7 @@ py -3.11 -m venv .venv
 Expected result currently:
 
 ```text
-70 passed
+95 passed
 ```
 
 This path makes no network requests and does not require an API key.
@@ -466,3 +466,40 @@ check) if that file exists, and runs without it otherwise; pass
 The same scenarios run in the offline test suite (`pytest`, section 2) as
 `test_tier4.py`, so a regression here is caught before it reaches this
 script.
+
+## 19. Run Tier 3 against the fulfillment demo (demo/thesis unification)
+
+Section 10's Tier 3 proves the thesis (raw-schema vs. induced-layer match
+rate) but only against abstract TPC-H benchmark queries. Section 15's
+fulfillment demo tells a business story (why did OTIF decline?) but never
+shows a raw-schema counterfactual on screen. This runs the same three-arm
+comparison against the fulfillment domain itself, so the demo narrative and
+the thesis proof are the same story instead of two disconnected artifacts.
+
+Requires section 15's `fulfillment.duckdb` to exist first:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_fulfillment_demo.py
+$env:SEMANTIC_INDUCTION_API_KEY = "YOUR_REPLACEMENT_KEY"
+$env:SEMANTIC_INDUCTION_MODEL = "claude-sonnet-4-5"
+.\.venv\Scripts\python.exe scripts\run_tier3_fulfillment.py
+```
+
+**Deliberately narrower than the full OTIF story right now** -- read the
+caveats at the top of `scripts/run_tier3_fulfillment.py` before presenting
+these numbers anywhere:
+
+- It does not yet include the stockout-driven "why" question, even though
+  that is the actual causal claim in `truth.json`. That question needs a
+  join to `order_event`, an event log with 3 rows per order; `induce.py`'s
+  `detect_fanout_risk` correctly excludes any join like that once profiles
+  are supplied, because it checks raw join-key uniqueness only and cannot
+  see that a filter would narrow it to one row per order in practice. This
+  is the safety check working as intended, not a bug -- do not route around
+  it by dropping `profiles=` from `induce()`. Teaching fanout detection to
+  trust a filter-narrowed join is real, separately-scoped future work.
+- The bundled question is not the OTIF rate itself -- it is one
+  single-aggregate fact (order volume by warehouse) decomposed from the
+  investigation, matching what `MetricPlan` can express today. The rate
+  becomes Tier-3-comparable once composite/ratio metrics land (see
+  ARCHITECTURE.md's "Metric-to-metric lineage" section).
