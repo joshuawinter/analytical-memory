@@ -31,6 +31,12 @@ class JoinEdge:
     # right.rn + 1`. None for a plain equi-join. See ARCHITECTURE.md's
     # "Metric-to-metric lineage" section for why this is load-bearing.
     time_offset: str | None = None
+    # "required" (INNER -- a missing component excludes the period, e.g. a
+    # ratio) or "coalesced" (FULL OUTER -- a missing component is legitimately
+    # zero, e.g. a sum). Derived from join_type as a proxy for the join's
+    # declared null-handling intent, not from detecting an actual COALESCE
+    # call. None when join_type is neither. See "Metric-to-metric lineage".
+    null_handling: str | None = None
 
 
 @dataclass(frozen=True)
@@ -258,6 +264,11 @@ class Metric:
     default_filters: tuple[Predicate, ...]
     support: int
     seen_in: tuple[str, ...]
+    # definition_ids this metric's queries reference via FROM/JOIN (see
+    # QueryFacts.metric_references) -- non-empty means this is a composite,
+    # not an atomic metric. Live references, not a flattened expression: see
+    # ARCHITECTURE.md's "Metric-to-metric lineage" section.
+    component_definition_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

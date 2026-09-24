@@ -45,6 +45,31 @@ def test_separates_comma_join_edges_from_filters():
     }
 
 
+def test_inner_join_null_handling_is_required():
+    facts = extract_facts("q03", _queries()["q03"].ast)
+
+    assert facts.join_edges
+    assert all(edge.null_handling == "required" for edge in facts.join_edges)
+
+
+def test_full_outer_join_null_handling_is_coalesced():
+    # Mirrors SOMA's net_revenue composite: components FULL OUTER JOINed and
+    # coalesced to zero, because a missing component is legitimately zero for
+    # a sum -- unlike quick_ratio's INNER JOIN, where a missing component
+    # should exclude the period. See ARCHITECTURE.md's "Metric-to-metric
+    # lineage" section.
+    ast = sqlglot.parse_one(
+        "SELECT coalesce(a.x, 0) + coalesce(b.y, 0) "
+        "FROM t1 a FULL OUTER JOIN t2 b ON a.id = b.id",
+        dialect="duckdb",
+    )
+
+    facts = extract_facts("composite_null_handling", ast)
+
+    assert facts.join_edges[0].join_type == "FULL"
+    assert facts.join_edges[0].null_handling == "coalesced"
+
+
 def test_resolves_a_registered_metric_output_instead_of_an_unknown_table():
     # Mirrors the shape SOMA's compiled composite-metric models actually use
     # (e.g. ga_cube_gross_dollar_retention selecting `1 - metric_value` from

@@ -96,6 +96,28 @@ def test_induce_canonicalization_flips_time_offset_sign_with_direction():
     assert metric.join_path[0].time_offset == "-1 month"
 
 
+def test_induce_propagates_component_definition_ids_for_composite_metrics():
+    # A composite metric's queries reference another metric's materialized
+    # output via FROM/JOIN (QueryFacts.metric_references), not a raw table.
+    # induce() should carry that onto the induced Metric as
+    # component_definition_ids, so Stage 4b can eventually tell a composite
+    # apart from an atomic metric. See ARCHITECTURE.md's "Metric-to-metric
+    # lineage" section.
+    facts = [
+        QueryFacts(
+            query_id="composite_q",
+            aggregations=[Agg("SUM", "metric_value")],
+            metric_references={"component_metric_cube": "def_component_metric"},
+        ),
+    ]
+    stats = aggregate(facts)
+
+    layer = induce(stats, catalog={}, facts_list=facts, min_support=1)
+
+    metric = next(m for m in layer.metrics if m.measure == ("SUM", "metric_value"))
+    assert metric.component_definition_ids == ("def_component_metric",)
+
+
 def test_entity_classification_covers_catalog_tables():
     catalog, _facts, stats = _corpus()
 

@@ -113,7 +113,8 @@ def _join_edges(ast: exp.Expression) -> list[JoinEdge]:
         join_type = "INNER"
         if join is not None:
             join_type = (join.args.get("side") or join.args.get("kind") or "INNER").upper()
-        edge = JoinEdge(left, right, join_type, time_offset)
+        null_handling = {"INNER": "required", "FULL": "coalesced"}.get(join_type)
+        edge = JoinEdge(left, right, join_type, time_offset, null_handling)
         if edge not in seen:
             seen.add(edge)
             edges.append(edge)

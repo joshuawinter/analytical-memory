@@ -81,7 +81,13 @@ def _canonical_edge(edge: JoinEdge) -> JoinEdge:
         offset = edge.time_offset
         if offset:
             offset = f"-{offset[1:]}" if offset.startswith("+") else f"+{offset[1:]}"
-        return JoinEdge(left=edge.right, right=edge.left, join_type=edge.join_type, time_offset=offset)
+        return JoinEdge(
+            left=edge.right,
+            right=edge.left,
+            join_type=edge.join_type,
+            time_offset=offset,
+            null_handling=edge.null_handling,
+        )
     return edge
 
 
@@ -103,6 +109,9 @@ def _candidate_metrics(facts_list: Iterable[QueryFacts]) -> list[Metric]:
                 key=str,
             )
         )
+        component_definition_ids = tuple(
+            sorted({definition_id for query in queries for definition_id in query.metric_references.values()})
+        )
         metrics.append(
             Metric(
                 measure=measure,
@@ -111,6 +120,7 @@ def _candidate_metrics(facts_list: Iterable[QueryFacts]) -> list[Metric]:
                 default_filters=invariant_filters,
                 support=len(queries),
                 seen_in=tuple(query.query_id for query in queries),
+                component_definition_ids=component_definition_ids,
             )
         )
     return metrics

@@ -709,6 +709,13 @@ bounded analytical task. The next system boundary is an evidence-backed
 analytical memory that stores concepts, definitions, evidence, investigations,
 findings, conflicts, and human resolutions.
 
+Tier 3 also runs against the fulfillment demo domain now
+(`scripts/run_tier3_fulfillment.py`, RUNBOOK.md §19), not just TPC-H --
+demo and thesis proof as one narrative instead of two disconnected
+artifacts, per the fulfillment story's own driver-identification question.
+Deliberately narrower than the full OTIF investigation today: see the
+fanout-detection and inequality-comparison gaps above.
+
 ### Analytical memory target model
 
 The target model stays deliberately small. It uses SKOS-like concepts for
@@ -1043,16 +1050,26 @@ current one:
 evaluator; that is Phase 4, once the reference graph is trustworthy. Two
 things do need to change now, both minimal:
 
-- Fix `_is_column_pair()` to accept `column [+-] interval-or-literal` on one
-  side, so the join edge is recorded with its offset instead of silently
-  dropped. This corrects existing Stage 1/2 mechanics rather than adding new
-  scope — it was already wrong for TPC-DS.
+- ~~Fix `_is_column_pair()` to accept `column [+-] interval-or-literal` on one
+  side~~ — done: `JoinEdge.time_offset` is recorded instead of silently
+  dropped. `JoinEdge.null_handling` (`required`/`coalesced`, derived from
+  join type) and `Metric.component_definition_ids` (propagated from
+  `QueryFacts.metric_references`) are also in now — the structural
+  prerequisites the design decision above calls for.
 - Stage 4b gains a conflict class: **component drift** — a composite whose
   query-level grain, offset, or null-handling does not match what its
   referenced component was itself induced with. Detection is the same
   group-by-and-compare shape Stage 4b already uses for measure/grain
   disagreement, applied to a composite's declared components instead of two
-  competing signatures for the same measure.
+  competing signatures for the same measure. **Still open**, blocked on a
+  real question, not an implementation detail: comparing a composite's join
+  against "what its component was itself induced with" needs a
+  `definition_id -> Metric` lookup, and nothing resolves one today —
+  `MetricOutputs` only maps relation name -> `definition_id`, one direction,
+  hand-fed in tests. The likely shape is `detect_component_drift(metrics,
+  components: dict[str, Metric])`, with the caller supplying that lookup
+  explicitly (mirroring how `metric_outputs` is already caller-supplied to
+  `extract_facts`) rather than the library guessing a naming convention.
 
 Stage 6 validation becomes recursive for composites: validate each component
 independently first, then validate the composite's reference structure
@@ -1116,36 +1133,60 @@ The next build order is:
   nothing yet points them at each other to replace the proxy with a real
   divergence score.
 
-  A sharper problem sits underneath the ranking one: different grain is not,
-  by default, a competing definition -- it is a different realization of the
-  same `BusinessConcept` (see "Analytical memory target model" above), and
-  the set of grains a concept has legitimately been sliced by is itself the
-  informative artifact for sql2text narration and a future pretrained
-  text2sql prior, not noise to reconcile. `detect_conflicts` currently gets
-  this backwards: `GRAIN_VARIATION` fires as a `Conflict` the moment a
-  measure appears at more than one grain, and flows into the same ranked
-  queue and human-ruling loop as a genuine disagreement. It should instead be
-  evidence recorded straight onto the concept's dimensional catalog,
-  auto-accepted, no rationale required. Ranking -- and eventually
-  execution-backed divergence scoring -- should apply only to same-grain
-  `DEFINITIONAL` conflicts, where two candidates disagree about what counts
-  within one slice. Separating that material disagreement from a benign
-  difference in slicing is the actual research problem, and the one that
-  determines whether anyone keeps using this.
+  A sharper problem sat underneath the ranking one, now fixed: different
+  grain is not, by default, a competing definition -- it is a different
+  realization of the same `BusinessConcept` (see "Analytical memory target
+  model" above), and the set of grains a concept has legitimately been
+  sliced by is itself the informative artifact for sql2text narration and a
+  future pretrained text2sql prior, not noise to reconcile.
+  `detect_conflicts` no longer routes grain variation through `Conflict`
+  arbitration at all -- `dimensional_catalog()` (`conflicts.py`) captures it
+  as evidence straight onto the concept, auto-accepted, no rationale
+  required. Ranking -- and eventually execution-backed divergence scoring --
+  now applies only to same-grain `DEFINITIONAL` conflicts, where two
+  candidates disagree about what counts within one slice. Separating that
+  material disagreement from a benign difference in slicing was the actual
+  research problem, and the one that determines whether anyone keeps using
+  this.
 
 - **Machine-generated queries.** Real logs are ~90% BI-tool extracts carrying
   tool conventions, not analyst intent. Provenance filtering is mandatory, not
-  a refinement.
+  a refinement. Still entirely unbuilt: `Provenance` (`models.py`) is defined
+  but never instantiated anywhere in `src/`.
 - **Grain conflation.** Two queries with the same measure at different grains
-  are different metrics. Get this wrong and every number is subtly incorrect —
-  and it surfaces as a phantom conflict in 4b, poisoning the queue.
+  are different metrics -- no longer a phantom-conflict risk in 4b (see
+  above), but still a live risk anywhere grain gets compared for equality,
+  e.g. a future execution-backed divergence scorer must not silently roll
+  one grain up into another to compare them.
 - **Rationale quality.** The whole learning loop depends on analysts writing
   generalizable reasons rather than verdicts. This is a UI and incentive
   problem more than a technical one, and it is the most likely silent failure.
 - **Correlated subqueries and windows.** TPC-DS is full of them; the flattening
-  in stage 1 must not silently drop semantics.
+  in stage 1 must not silently drop semantics. Both are captured faithfully
+  (`extract.py`'s `_windows`/`_correlations`, stored on `QueryFacts`), but
+  neither is read anywhere downstream yet -- Stage 3/4b can't act on a window
+  partition or a correlated subquery's scope, only record that one exists.
 - **Support thresholds.** Too high and you miss real metrics; too low and you
   induce noise. Make `MIN_SUPPORT` a swept parameter and report sensitivity.
+- **Inequality comparisons between columns are invisible to extraction.**
+  `_join_edges` only scans `exp.EQ`, and `_predicates()` explicitly skips a
+  comparison where both sides are columns (`_is_join_comparison`) --
+  discovered building the fulfillment Tier 3 harness, where `event_time >
+  promised_date` ("late delivery") is silently dropped as neither a join
+  edge nor a predicate. Any "overdue"/"expired"/"stale"-shaped business
+  question hits this same wall, not just fulfillment. The `time_offset` fix
+  only covers arithmetic on an *equality* join; inequality between two bare
+  columns is a different, still-open gap.
+- **Fanout detection can't trust a filter-narrowed join.**
+  `detect_fanout_risk` (`induce.py`) checks only raw join-key uniqueness via
+  `TableProfile` -- it has no way to see that a filter like `event_type =
+  'SHIPPED'` would narrow a one-to-many join (e.g. to an event-log table)
+  down to one row per anchor key in practice. Correctly conservative today,
+  not a bug, but it means any metric requiring a filtered join to an
+  event-log-shaped table is excluded from the induced layer entirely once
+  profiles are supplied, regardless of how correct the filter is. Teaching
+  it to trust evidence-backed, filter-narrowed joins is real, generalizable
+  future work, not fulfillment-demo-specific.
 
 ## What this does not eliminate
 

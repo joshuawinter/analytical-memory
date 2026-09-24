@@ -79,6 +79,9 @@ def _metrics_from_facts(
 
         for kept_filters, queries in signatures.items():
             joins = tuple(sorted({edge for query in queries for edge in query.join_edges}, key=str))
+            component_definition_ids = tuple(
+                sorted({definition_id for query in queries for definition_id in query.metric_references.values()})
+            )
             metrics.append(
                 Metric(
                     measure=measure,
@@ -87,6 +90,7 @@ def _metrics_from_facts(
                     default_filters=tuple(sorted(kept_filters, key=str)),
                     support=len(queries),
                     seen_in=tuple(query.query_id for query in queries),
+                    component_definition_ids=component_definition_ids,
                 )
             )
     return metrics
