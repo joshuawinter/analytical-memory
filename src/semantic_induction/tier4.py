@@ -91,8 +91,8 @@ def run_tier4(conflicts: list[Conflict], scenarios: list[Tier4Scenario]) -> Tier
     A scenario is "found" when some ``DEFINITIONAL`` conflict's candidates
     split the scenario's query IDs across two or more separate candidates --
     i.e. those queries actually ended up as competing signatures, not merged
-    into one candidate or only ever appearing inside a ``GRAIN_VARIATION``
-    conflict.
+    into one candidate or absent from ``conflicts`` entirely because the
+    only difference detected was grain (see ``conflicts.dimensional_catalog``).
     """
     results = []
     for scenario in scenarios:

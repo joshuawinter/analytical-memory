@@ -265,7 +265,7 @@ class Conflict:
     measure: tuple[str, str]
     grain: frozenset[str]
     candidates: tuple[Metric, ...]
-    kind: str  # GRAIN_VARIATION, DEFINITIONAL, NORMATIVE
+    kind: str  # DEFINITIONAL, NORMATIVE -- grain-only variation is evidence, not a Conflict; see conflicts.dimensional_catalog
     materiality: float
     support: dict[str, int]
 

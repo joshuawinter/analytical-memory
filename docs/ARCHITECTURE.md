@@ -268,6 +268,19 @@ Rulings from 4c **override frequency**. A resolved definition wins even when the
 corpus majority disagrees, because the corpus records habit and the ruling
 records authority.
 
+**Filter, refine, store, consume.** Stages 1–4 are a sieve: they catch domain
+Knowledge, Concepts, and Language (KCL) out of raw SQL and let the rest pass
+through unrecorded — a `GRAIN_VARIATION` signal is filtered KCL, not a
+conflict (see "Conflict ranking, not detection"). 4b/4c and stage 5 are
+refinement: classification, human arbitration, and LLM naming turn filtered
+KCL into refined KCL (RKCL) — provenance-, profile-, and statistics-backed
+knowledge worth keeping, not raw induced facts. The memory layer ("Analytical
+memory target model" below) is where RKCL is stored; text2sql — and
+sql2text — are consumers that tap that knowledge base and its lineage rather
+than reasoning from scratch each time. The diagram above stops at stage 6
+because that is as far as this repository's code runs today; the store and
+its consumers are still design, not build.
+
 ---
 
 ## Stage 1 — Ingest & normalize
@@ -704,7 +717,8 @@ the analytical definitions and investigation records remain project-specific.
 
 ```text
 BusinessConcept
-    aliases, broader/narrower terms, description
+    aliases, broader/narrower terms, description, dimensional catalog
+    (grain/dimension combinations its MetricDefinitions have been observed at)
 
 MetricDefinition
     measure, entity, grain, time basis, filters, physical realization
@@ -1066,7 +1080,13 @@ The next build order is:
 1. **Memory records.** Add small records for `BusinessConcept`,
     `MetricDefinition`, `Evidence`, `Investigation`, `Finding`, and `Resolution`.
     Convert current induced metrics into evidence-backed definitions while
-    retaining source query IDs, profiles, and confidence.
+    retaining source query IDs, profiles, and confidence. `BusinessConcept`
+    needs its dimensional catalog populated as a first-class field, not an
+    afterthought: the set of grains a concept has actually been sliced by is
+    what sql2text narration and a future pretrained text2sql prior consume,
+    and nothing captures it today -- `detect_conflicts` currently discards it
+    into a ranked `GRAIN_VARIATION` conflict instead (see "Conflict ranking,
+    not detection" below).
 2. **Deterministic retrieval.** Retrieve concepts, aliases, metric signatures,
     conflicts, and evidence for a business question. Start with token and alias
     matching in SQLite or JSON; embeddings and a graph store are optional later.
@@ -1088,9 +1108,31 @@ The next build order is:
 
 ## Where this will actually hurt
 
-- **Conflict ranking, not detection.** Detection is a group-by. Separating
-  material disagreement from benign grain variation is the actual research
-  problem, and the one that determines whether anyone keeps using this.
+- **Conflict ranking, not detection.** Detection is a group-by, and today's
+  `materiality` score (`conflicts.py`) is a support/divergence proxy, not an
+  actual measure of disagreement -- two `DEFINITIONAL` candidates 0.1% apart
+  and two 1000% apart rank identically if their query counts match.
+  `compile_metric` and the Tier 3 execute/compare pattern already exist;
+  nothing yet points them at each other to replace the proxy with a real
+  divergence score.
+
+  A sharper problem sits underneath the ranking one: different grain is not,
+  by default, a competing definition -- it is a different realization of the
+  same `BusinessConcept` (see "Analytical memory target model" above), and
+  the set of grains a concept has legitimately been sliced by is itself the
+  informative artifact for sql2text narration and a future pretrained
+  text2sql prior, not noise to reconcile. `detect_conflicts` currently gets
+  this backwards: `GRAIN_VARIATION` fires as a `Conflict` the moment a
+  measure appears at more than one grain, and flows into the same ranked
+  queue and human-ruling loop as a genuine disagreement. It should instead be
+  evidence recorded straight onto the concept's dimensional catalog,
+  auto-accepted, no rationale required. Ranking -- and eventually
+  execution-backed divergence scoring -- should apply only to same-grain
+  `DEFINITIONAL` conflicts, where two candidates disagree about what counts
+  within one slice. Separating that material disagreement from a benign
+  difference in slicing is the actual research problem, and the one that
+  determines whether anyone keeps using this.
+
 - **Machine-generated queries.** Real logs are ~90% BI-tool extracts carrying
   tool conventions, not analyst intent. Provenance filtering is mandatory, not
   a refinement.

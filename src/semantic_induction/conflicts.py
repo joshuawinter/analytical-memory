@@ -108,6 +108,12 @@ def detect_conflicts(
     profiles, every observed filter difference is conservatively treated as
     candidate-defining, matching the prior behavior.
 
+    A measure observed at more than one grain is not, by itself, a conflict
+    -- it is a different realization of the same business concept. See
+    ``dimensional_catalog`` and ARCHITECTURE.md's "Conflict ranking, not
+    detection". Only same-grain candidates that disagree on filters reach
+    this list.
+
     Materiality is currently a deterministic support/divergence proxy. An
     execution-backed scorer can replace it once metric compilation exists.
     """
@@ -131,14 +137,29 @@ def detect_conflicts(
                 grain_candidates = tuple(candidate for candidate in candidates if candidate.grain == grain)
                 if len(grain_candidates) > 1:
                     conflicts.append(_conflict(measure, grain, grain_candidates, "DEFINITIONAL"))
-            conflicts.append(
-                _conflict(measure, frozenset(), tuple(candidates), "GRAIN_VARIATION")
-            )
             continue
         if len(candidates) > 1:
             grain = next(iter(grains), frozenset())
             conflicts.append(_conflict(measure, grain, tuple(candidates), "DEFINITIONAL"))
     return sorted(conflicts, key=lambda conflict: conflict.materiality, reverse=True)
+
+
+def dimensional_catalog(facts_list: Iterable[QueryFacts]) -> dict[tuple[str, str], frozenset[frozenset[str]]]:
+    """Return the set of grains each measure has actually been observed at.
+
+    This is the evidence ``detect_conflicts`` no longer routes through
+    ``GRAIN_VARIATION``: a measure appearing at several grains is filtered
+    KCL worth keeping, not a competing definition needing a human ruling.
+    It is what a future ``BusinessConcept``'s dimensional catalog (see
+    ARCHITECTURE.md's "Analytical memory target model") gets populated from,
+    and what sql2text narration draws on for precedent.
+    """
+    catalog: dict[tuple[str, str], set[frozenset[str]]] = defaultdict(set)
+    for facts in facts_list:
+        grain = frozenset(facts.group_by)
+        for aggregation in facts.aggregations:
+            catalog[(aggregation.func, aggregation.column)].add(grain)
+    return {measure: frozenset(grains) for measure, grains in catalog.items()}
 
 
 def _conflict(
