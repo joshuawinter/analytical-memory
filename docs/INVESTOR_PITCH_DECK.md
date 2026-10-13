@@ -22,19 +22,24 @@ forward:
 - Every AI deployment inherits ambiguity without knowing where it came from.
 - Every departure removes context that cannot be recovered from a catalog.
 
-**Every AI-for-data product on the market takes the same shape: a question in,
-SQL out.** Text2SQL already works reasonably well, which is exactly the
-limit -- a model can write plausible SQL from a schema alone, but it cannot
-know which of several plausible interpretations is the one this company
-already settled on, because that decision was never written down anywhere
-text2SQL reads. It lives in the SQL the company already wrote, argued over,
-and approved.
+**Every AI-for-data product on the market converges on the same shape: a
+question in, SQL out, and a semantic layer underneath to keep the SQL
+honest.** The platforms have noticed that nobody writes that layer, and the
+warehouses now draft it for you: Snowflake and Databricks both mine their own
+query history to propose tables, joins, and example queries, and Google has
+announced the same. What they produce is a proposal you accept or reject.
+None of them records why a definition was accepted, surfaces that two teams
+compute the same measure differently, or re-checks an approved definition
+against what people query next quarter. The decision the company already
+made, and the reason for it, is still never written down anywhere text2SQL
+reads. It lives in the SQL the company already wrote, argued over, and
+approved.
 
 **The opportunity:** discover patterns of operational meaning already present
-in enterprise assets, then maintain them as a governed corporate memory. The
-category this creates is **SQL2Text, not text2SQL** -- and it is the layer
-text2SQL needs underneath it to be reliable at enterprise scale, not a
-competing bet against it.
+in enterprise assets, then maintain them as a governed corporate memory with
+the disagreements, rulings, and reasons kept. The category this creates is
+**SQL2Text, not text2SQL** -- and it is the layer text2SQL needs underneath
+it to be reliable at enterprise scale, not a competing bet against it.
 
 ---
 
@@ -206,8 +211,32 @@ what it knows, how it knows it, and who decided it was authoritative.
   doesn't work; Tier 3's own raw-schema arm shows an LLM writes plausible SQL
   from a schema alone reasonably well. The gap is knowing which interpretation
   this company already settled on -- that's not in the schema.
+- With a business buyer, the feeling to sell is "your own private Claude for
+  the company." Correct the one wrong assumption it carries without killing
+  the feeling: nothing is trained. The company's SQL, reports, and rulings
+  are decoded into a memory Claude reads at question time, so the memory can
+  be inspected, corrected, and revoked, and a ruling can outrank what the
+  corpus does most often. Weights cannot do any of that. The buyer never
+  writes SQL; the one thing they cannot delegate is saying "that one" when
+  the system shows two interpretations with evidence for each.
+- Product, not professional service. The test: who makes the memory grow
+  after month one? Here it is the customer's own domain owners ruling on
+  conflicts as they ask ordinary questions. Our staff never author
+  definitions. Landing the first domain is real per-customer work (domain
+  choice, query-history access, security review, first conflicts); bound it
+  as fixed-scope onboarding measured by time to a trusted definition. Refuse
+  requests to pre-author definitions "before launch"; induce first, rule only
+  at conflicts. Price sits on the governance loop and the memory, not on
+  generation, which Snowflake and Databricks now give away in-platform.
 - The differentiated asset is not the initial inference. It is the accumulated
   evidence-to-decision history and organization-specific vocabulary it produces.
+  Do not claim induction from query history is novel: Snowflake Semantic View
+  Autopilot and Databricks Genie both do it (verified against their docs
+  2026-10-12, see research/prior-art.md section 0). Claim what they verifiably
+  lack: a conflict between two definitions shown with its evidence, a ruling
+  with a reason that outranks frequency, and a re-check against later usage.
+  Databricks Genie benchmarks already do result-set validation of answers, so
+  frame Tier 3 as validating induced definitions, not as "we execute SQL."
 - Make the experience concrete with the voice/chat example. The user sees a
   natural answer; the buyer sees a safe path from question to governed action.
 - Frontier models are accelerators and interchangeable interfaces. Embeddings

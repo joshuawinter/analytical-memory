@@ -862,6 +862,87 @@ report model, but flattening them into a measure/grain/filter sentence loses
 material meaning. They must remain unpublished until that richer model can
 preserve their logic.
 
+### Memory storage format
+
+Decided 2026-10-13, alongside the pivot to the self-hosted shared memory.
+Implemented as `store.py` (`MemoryStore`), wired in by `LabelingStore` so every
+ruling and vocabulary enrichment is written through it.
+
+**Prediction this is aligned to.** Three Anthropic surfaces, observed
+2026-10-13, converge on one shape for agent memory:
+
+- Claude's personal memory "saves memory as a set of individual topics as you
+  chat," is per project, editable per entry, and viewable "exactly how Claude
+  sees it." Small text entries, rendered verbatim into context.
+- Managed Agents memory stores are path-addressed text files (one memory per
+  path, kept small), mounted as a directory the agent reads and writes with
+  ordinary file tools. Every mutation produces an immutable memory version
+  carrying `operation` (created, modified, deleted), an actor, and a
+  `content_sha256`. Updates accept a `content_sha256` precondition for
+  optimistic concurrency. Redaction scrubs a version's content and keeps the
+  actor and timestamps.
+- Claude Code's memory is one markdown file per fact with front matter and an
+  index file, read at session start.
+
+The common denominator is **a directory of small, path-addressed markdown
+documents with flat front matter, each change an immutable content-addressed
+version, rendered verbatim to the model.** Not a vector database, not a graph
+store, not rows the model never sees. That is what a shared enterprise memory
+should look like so that it can be mounted into an Anthropic memory store, a
+Claude Code `.claude/` directory, or any other client's context without
+translation, and so a person with a text editor can audit it after the
+service is gone.
+
+**Design, as built.**
+
+```text
+<labels>.memory/
+  entries/<kind>/<id>.md     head projection; rebuilt from ledger + objects at will
+  objects/<sha256>.md        immutable, content-addressed; one per version, never edited
+<labels>.audit.jsonl         hash-chained ledger shared with KNOWLEDGE_DECISION events
+```
+
+- **Append-only.** `MemoryStore.write` stores an object under its SHA-256,
+  appends a `MEMORY_VERSION` event (path, operation, `content_sha256`,
+  `previous_sha256`, actor) to the same `AuditLedger` the rulings use, then
+  rewrites the head projection. Nothing is updated in place; a superseded
+  ruling remains readable by version. Deletion is a version, not an erasure.
+- **One chain.** Decisions and memory versions interleave in one ledger, so
+  "who ruled, what they wrote, and what the agent will now read" is a single
+  verifiable sequence. `verify()` checks the chain, every object hash, and
+  every head projection; editing an entry file outside the ledger is caught
+  and `rebuild_projection()` restores it.
+- **Optimistic concurrency.** `expected_sha256` on write mirrors the Managed
+  Agents precondition, so two reviewers cannot silently clobber each other.
+- **Redaction with provenance.** `redact(version_id, actor, reason)` blanks the
+  object and head, records a `MEMORY_REDACTION` event, and leaves the original
+  version event intact. Required for leaked credentials and deletion requests;
+  the ledger never lies about a version having existed.
+- **Flat front matter, no YAML dependency.** Scalars and lists of scalars only,
+  so entries are diffable line by line and readable without a parser.
+- **Never store credentials.** Entries are replayed verbatim into future
+  contexts. Secrets belong in the client's vault, not in memory.
+
+**Secure and immutable, in deployment terms.** The hash chain makes tampering
+*evident*; it does not make it *impossible*. Immutability against an insider
+with disk access comes from where the objects and ledger live: object storage
+with a retention lock (S3 Object Lock in compliance mode, Azure immutable
+blob, or equivalent) for `objects/` and the ledger, customer-managed
+encryption keys at rest, and the ledger head hash periodically anchored
+somewhere the writers cannot reach (a signed timestamp, a separate account,
+or the customer's existing audit system). Access control is enforced at the
+MCP server from the SSO identity, per entry kind and per domain, and that
+identity is what `actor` must become (pivot step 1). Entries carry
+classification in front matter so the projection served to a given reader can
+be filtered before it reaches the model.
+
+**What stays open.** `LabelingStore` still writes the mutable `labels.json`
+and `labels.vocabulary.json` the browser UI reads; those are now projections,
+not the record, and should be regenerated from the memory store rather than
+saved alongside it. Only resolutions and vocabulary are written through the
+store today; induced definitions, evidence, and investigations should follow
+so the whole memory is one directory an agent can be pointed at.
+
 ### MVP readiness
 
 The current implementation is reusable for the first MVP because it already
@@ -1077,6 +1158,66 @@ independently first, then validate the composite's reference structure
 components — not a bigger flat Tier 3 comparison.
 
 ## Scope lock and next build order
+
+### Pivot, 2026-10-13: the product is the self-hosted shared memory
+
+Decision: the product is a self-hosted, shared, governed analytical memory
+that agents read and write over MCP. Claude Enterprise is the first client,
+not the product. Induction is demoted from headline to one evidence feeder.
+
+Why, verified against primary sources on 2026-10-12 and 2026-10-13
+([prior art](../research/prior-art.md) section 0, research README
+SRC-023 to SRC-034):
+
+- Snowflake Semantic View Autopilot and Databricks Genie already induce
+  semantic context from warehouse query history, free, inside the platform.
+  Competing on induction is competing with a checkbox.
+- Claude Enterprise memory is per user, Anthropic-hosted, deleted when an
+  admin disables it, and "isn't available to organizations with HIPAA,
+  public-sector, or custom data retention agreements." Connectors read at
+  query time and retain nothing. No organizational feedback loop exists
+  inside the product.
+- No verified vendor ships conflict detection between definitions, a ruling
+  with rationale that outranks frequency, or drift against an approved
+  definition. That loop only exists in something the enterprise owns.
+
+Target buyer: enterprises under custom retention, regulatory, or sovereign
+constraints, and multi-platform estates no single warehouse can see across.
+
+What changes in the build order:
+
+1. **Serve the memory to more than one person.** Network-reachable MCP
+    transport (HTTP/SSE; stdio only today), `decided_by` bound to an SSO or
+    SCIM identity instead of free text, read/write authorization enforced in
+    the tool contract, and the store moved from local files to Postgres.
+    This is the gap named in "Agent interface boundary" and it is the whole
+    distance between demo and product.
+2. **Ingest the platforms' own output as evidence.** Snowflake semantic
+    views and verified queries, Databricks metric views and trusted assets,
+    dbt and Ossie artifacts, carried with provenance `platform-generated`.
+    Their free induction becomes our candidates.
+3. **Publish rulings back.** An approved definition lands in the customer's
+    Snowflake verified query repository, Databricks trusted assets, dbt, and
+    Ossie. The memory sits above the platforms and feeds them.
+4. **Real-data proof within one quarter.** Two weeks on one company's query
+    history measuring human-authored fraction, distinct candidates, genuine
+    same-grain conflicts, and whether one named owner rules on twenty. Then a
+    hosted pilot with five to ten users measured by time to a trusted
+    definition and whether rulings keep accruing unattended.
+
+What stops: induction improvements not required by a pilot conflict
+(inequality predicates, filter-narrowed fanout trust), TPC-H question-set
+expansion, deck polishing, academic prior-art verification. The repo and
+product name say "semantic induction" and no longer describe the product;
+rename after the pilot is real.
+
+Pricing posture: per governed domain plus a platform fee for the hosted
+memory. Nothing per query, nothing per generated definition.
+
+The prior build order below stands for the mechanics it covers; items 1 and
+4 there are now subsumed by item 1 above.
+
+### Locked mechanics
 
 The following mechanics are now the locked foundation rather than an open-ended
 research backlog:

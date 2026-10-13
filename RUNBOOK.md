@@ -323,6 +323,18 @@ The browser will execute the reviewed SQL realization and show the result,
 evidence, and metric definition. The hidden `truth.json` file is not used by
 the review or investigation path.
 
+Every ruling and vocabulary enrichment is also written to the append-only
+shared memory next to the labels file, `data\fulfillment_demo\labels.memory\`,
+as content-addressed markdown entries chained into `labels.audit.jsonl`. To
+check that nothing has been edited outside the ledger:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from pathlib import Path; from semantic_induction.store import MemoryStore; from semantic_induction.audit import AuditLedger; print(MemoryStore(Path('data/fulfillment_demo/labels.memory'), AuditLedger(Path('data/fulfillment_demo/labels.audit.jsonl'))).verify(), 'versions verified')"
+```
+
+See ARCHITECTURE.md "Memory storage format" for the design and why it is
+shaped like Anthropic's own memory stores.
+
 The browser and CLI share the same `InvestigationService`; MCP will be added as
 another client adapter over that service. This keeps approval gates,
 provenance, and deterministic execution identical across interfaces.

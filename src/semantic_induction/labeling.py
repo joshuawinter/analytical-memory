@@ -10,6 +10,7 @@ from semantic_induction.audit import AuditLedger
 from semantic_induction.compile import CompileError, compile_metric
 from semantic_induction.memory import AnalyticalMemory, Resolution, is_publishable_metric
 from semantic_induction.models import Catalog, Metric
+from semantic_induction.store import MemoryStore, parse_front_matter, render_entry, safe_segment
 
 DECISIONS = {"APPROVE", "REJECT", "CLARIFY"}
 
@@ -19,7 +20,15 @@ class LabelingError(ValueError):
 
 
 class LabelingStore:
-    """Apply and persist human decisions without modifying source evidence."""
+    """Apply and persist human decisions without modifying source evidence.
+
+    Two durable records are kept side by side. ``labels.json`` is the mutable
+    convenience projection the browser UI reads. The ``<labels>.memory/``
+    directory is the system of record: every ruling and vocabulary enrichment
+    is written as an immutable, content-addressed markdown entry whose version
+    event is chained into the same audit ledger as the decision itself (see
+    ``store.py`` and ARCHITECTURE.md "Memory storage format").
+    """
 
     def __init__(self, memory: AnalyticalMemory, path: Path | None = None):
         self.memory = memory
@@ -38,6 +47,17 @@ class LabelingStore:
     def audit_ledger(self) -> AuditLedger:
         return AuditLedger(self.audit_path)
 
+    @property
+    def memory_root(self) -> Path | None:
+        return self.path.with_suffix(".memory") if self.path else None
+
+    @property
+    def memory_store(self) -> MemoryStore | None:
+        """Append-only shared memory, chained into the same ledger as rulings."""
+        if self.memory_root is None:
+            return None
+        return MemoryStore(self.memory_root, self.audit_ledger)
+
     def label(
         self,
         definition_id: str,
@@ -55,6 +75,7 @@ class LabelingStore:
         if not decided_by.strip():
             raise LabelingError("decided_by is required")
 
+        previous = self.memory.resolutions.get(definition_id)
         resolution = Resolution(
             resolution_id=f"resolution:{definition_id}:{len(self.memory.resolutions) + 1}",
             target_id=definition_id,
@@ -75,7 +96,39 @@ class LabelingStore:
                 "resolution_id": resolution.resolution_id,
             },
         )
+        store = self.memory_store
+        if store is not None:
+            store.write(
+                f"resolutions/{safe_segment(definition_id)}",
+                self.render_resolution(resolution, supersedes_id=previous.resolution_id if previous else None),
+                actor=resolution.decided_by,
+            )
         return resolution
+
+    def render_resolution(self, resolution: Resolution, supersedes_id: str | None = None) -> str:
+        """Render a ruling as the small text entry an agent reads verbatim."""
+        definition = self.memory.metric_definitions[resolution.target_id]
+        concept = self.memory.concepts.get(definition.concept_id)
+        enrichment = self.enrichments.get(resolution.target_id, {})
+        metadata = {
+            "kind": "resolution",
+            "resolution_id": resolution.resolution_id,
+            "target": resolution.target_id,
+            "concept": concept.preferred_label if concept else definition.concept_id,
+            "decision": resolution.decision,
+            "decided_by": resolution.decided_by,
+            "decided_at": resolution.decided_at.isoformat(),
+            "supersedes": supersedes_id,
+            "measure": f"{definition.measure[0]}({definition.measure[1]})",
+            "grain": list(definition.grain),
+            "filters": [f"{item.column} {item.op} {item.value}" for item in definition.default_filters],
+            "evidence": list(definition.evidence_ids),
+        }
+        body_lines = [f"# {metadata['concept']}: {resolution.decision}", "", "## Rationale", "", resolution.rationale]
+        corrected = str(enrichment.get("corrected_definition", "")).strip()
+        fallback = f"{metadata['measure']} by {', '.join(definition.grain) or 'total'} (observed, not yet described)"
+        body_lines += ["", "## Definition", "", corrected or definition.inferred_definition or fallback]
+        return render_entry(metadata, "\n".join(body_lines))
 
     def enrich(self, definition_id: str, corrected_definition: str, aliases: str) -> None:
         """Save reviewer language without overwriting the inferred evidence record."""
@@ -104,6 +157,26 @@ class LabelingStore:
                 "aliases": list(alias_list),
             },
         )
+        store = self.memory_store
+        if store is not None:
+            metadata = {
+                "kind": "vocabulary",
+                "target": definition_id,
+                "concept": concept.preferred_label if concept else concept_id,
+                "aliases": list(alias_list),
+            }
+            body = corrected_definition.strip() or "Aliases only."
+            store.write(f"vocabulary/{safe_segment(definition_id)}", render_entry(metadata, body), actor="reviewer")
+            resolution = self.memory.resolutions.get(definition_id)
+            if resolution is not None:
+                path = f"resolutions/{safe_segment(definition_id)}"
+                current = parse_front_matter(store.read(path) or "")
+                supersedes_id = current.get("supersedes")
+                store.write(
+                    path,
+                    self.render_resolution(resolution, supersedes_id=str(supersedes_id) if supersedes_id else None),
+                    actor=resolution.decided_by,
+                )
 
     def save(self) -> None:
         if self.path is None:

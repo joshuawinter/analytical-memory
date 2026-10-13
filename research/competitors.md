@@ -1,10 +1,11 @@
 # Competitor and Adjacent-System Matrix
 
-Status: working analysis, 2026-09-13. Related architecture: [Stage 6 validation](../docs/ARCHITECTURE.md#stage-6--validation-harness), [analytical memory target model](../docs/ARCHITECTURE.md#analytical-memory-target-model).
+Status: working analysis, 2026-09-13; warehouse-native row and deep-dive added 2026-10-12 from verified primary docs (see [prior art](prior-art.md) section 0). Related architecture: [Stage 6 validation](../docs/ARCHITECTURE.md#stage-6--validation-harness), [analytical memory target model](../docs/ARCHITECTURE.md#analytical-memory-target-model).
 
 | Category | Representative systems | Primary job | Starting assumption | Possible integration boundary |
 |---|---|---|---|---|
 | Semantic-layer platforms | AtScale, dbt Semantic Layer, Cube, Looker | Define, govern, and serve metrics | The organization can author or maintain definitions | Export approved definitions; audit usage against them |
+| Warehouse-native AI semantic generation | Snowflake Semantic View Autopilot (`SRC-023`), Databricks Genie Agents (`SRC-027`), Google Knowledge Catalog Preview (`SRC-017`), dbt Wizard (`SRC-011`), Fabric IQ ontology (`SRC-021`) | Draft the semantic layer from schema, code, BI files, and (Snowflake, Databricks, Google) query history | Someone will accept or reject each proposal; name uniqueness is enough conflict handling | Consume their drafts as candidate evidence; publish rulings back as verified queries, trusted assets, or metric views |
 | Generative BI | ThoughtSpot, Looker Conversational Analytics, Power BI Copilot | Ask questions, explore, summarize, and investigate | A governed model/context layer exists | Supply evidence-backed definitions and review outcomes |
 | Relational foundation models | Kumo Relational, RelBench ecosystem | Predict over relational context | Schema, keys, and relationships are available | Provide business semantics and provenance around relational data |
 | Process intelligence | Celonis and adjacent process-mining tools | Discover and improve operational processes | Event logs and process keys are available | Connect process behavior to metrics, definitions, and findings |
@@ -19,7 +20,11 @@ The project does not compete first on dashboards, prediction, query serving, or 
 actual enterprise usage -> candidate semantics -> human reconciliation -> governed semantic model
 ```
 
-The strongest differentiation is evidence provenance, conflict visibility, human resolution, and drift detection.
+The strongest differentiation is evidence provenance, conflict visibility, human resolution, and drift detection. The first arrow, usage to candidates, is no longer ours alone: Snowflake and Databricks ship it (verified 2026-10-12). The three arrows after it are where no verified product goes.
+
+### Deep-dive: warehouse-native generation vs. governed memory
+
+As of 2026-10-12, Snowflake Semantic View Autopilot will "Surface historical SQL queries as suggestions to the semantic view" (`SRC-023`), and Databricks Genie "automatically searches for relevant popular workspace queries associated with those assets" (`SRC-027`). Both present proposals for per-item accept or reject. Neither records a reason, neither compares two definitions of the same measure (Snowflake validation is per-view and structural, `SRC-025`; Databricks tells authors to "review and resolve any inconsistencies" by hand), and neither re-checks an approved definition against later usage. Snowflake's verified queries carry a `verified_by` name (`SRC-024`), the closest shipped thing to a ruling record. Databricks Genie benchmarks score answers against gold SQL by result-set equality (`SRC-028`), the closest shipped thing to Stage 6, but over hand-written benchmarks and the agent's answers, not over induced definitions and the usage they came from. The integration boundary is therefore two-way: their drafts are candidate evidence for us, and our rulings publish back into their verified-query, trusted-asset, and metric-view slots.
 
 ## Leveraging existing standards vs. our unique capability
 
