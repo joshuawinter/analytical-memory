@@ -3,7 +3,7 @@
 Run these commands from the repository root:
 
 ```powershell
-Set-Location C:\Users\jwp\semantic-induction-poc
+Set-Location C:\Users\jwp\analytical-memory
 ```
 
 ## 1. Check the local environment
@@ -403,9 +403,9 @@ To configure in an MCP client (such as Claude Desktop or Cursor), add to `claude
 {
   "mcpServers": {
     "analytical-memory": {
-      "command": "C:\\Users\\jwp\\semantic-induction-poc\\.venv\\Scripts\\python.exe",
+      "command": "C:\\Users\\jwp\\analytical-memory\\.venv\\Scripts\\python.exe",
       "args": [
-        "C:\\Users\\jwp\\semantic-induction-poc\\scripts\\mcp_server.py",
+        "C:\\Users\\jwp\\analytical-memory\\scripts\\mcp_server.py",
         "--domain",
         "fulfillment"
       ]
