@@ -19,6 +19,8 @@ def _conflicts(with_profiles: bool):
     facts = extract_corpus(queries, catalog)
     profiles = None
     if with_profiles:
+        if not (root / "tpcds.duckdb").exists():
+            pytest.skip("tpcds.duckdb not generated; see RUNBOOK section 9")
         with duckdb.connect(str(root / "tpcds.duckdb"), read_only=True) as connection:
             profiles = profile_database(connection, catalog, sample_size=5, top_values=5)
     return detect_conflicts(None, facts, min_support=1, profiles=profiles)
