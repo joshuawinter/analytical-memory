@@ -32,7 +32,7 @@ py -3.11 -m venv .venv
 Expected result currently:
 
 ```text
-117 passed
+124 passed
 ```
 
 This path makes no network requests and does not require an API key.
@@ -564,3 +564,35 @@ these numbers anywhere:
   investigation, matching what `MetricPlan` can express today. The rate
   becomes Tier-3-comparable once composite/ratio metrics land (see
   ARCHITECTURE.md's "Metric-to-metric lineage" section).
+
+## 20. Run the Tier 5 harness: rulings outrank frequency
+
+Offline and deterministic. No database file, no API key. This is the
+central claim of the 2026-10-13 pivot, tested adversarially: a corpus where
+ten analyst queries encode the wrong definition of revenue and three encode
+the right one, with an independently authored hidden truth. See
+`docs/ARCHITECTURE.md`'s Tier 5 section and `data/tpcds/tier5/README.md`.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_tier5.py
+```
+
+Prints PASS/FAIL for four scenarios (no ruling refuses with the fork exposed;
+a ruling for the minority answers and matches truth; asked as of a moment
+before the ruling it reverts to review; a later dated ruling supersedes and
+history stays readable) plus two counts that must be zero: answers given
+from frequency while a ruling was in force, and answers given at all while
+contested with no ruling. Exits non-zero on any failure. The same run is in
+the offline test suite as `test_tier5.py`.
+
+To keep the rulings, ledger, and memory store it writes for inspection:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_tier5.py --keep-labels out\tier5\labels.json
+```
+
+Point-in-time answers are now available everywhere the investigation path
+is: `InvestigationService.investigate(question, as_of=...)` and
+`record_decision(..., valid_from=...)`. A contested measure with no ruling
+in force returns `NEEDS_REVIEW` with the rival definition ids in
+`candidates`; the MCP tool prints them as `CANDIDATES`.

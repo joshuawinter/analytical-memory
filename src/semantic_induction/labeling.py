@@ -19,6 +19,19 @@ class LabelingError(ValueError):
     """Raised when a human label cannot be applied."""
 
 
+def _aware(moment: datetime) -> datetime:
+    """Treat naive datetimes as UTC so rulings compare without TypeError."""
+    return moment if moment.tzinfo is not None else moment.replace(tzinfo=timezone.utc)
+
+
+def _decode_resolution(values: dict[str, object]) -> Resolution:
+    decoded = dict(values)
+    decoded["decided_at"] = datetime.fromisoformat(str(decoded["decided_at"]))
+    for key in ("valid_from", "valid_to"):
+        decoded[key] = datetime.fromisoformat(str(decoded[key])) if decoded.get(key) else None
+    return Resolution(**decoded)
+
+
 class LabelingStore:
     """Apply and persist human decisions without modifying source evidence.
 
@@ -34,6 +47,10 @@ class LabelingStore:
         self.memory = memory
         self.path = path
         self.enrichments: dict[str, dict[str, object]] = {}
+        # Every ruling ever recorded per definition, oldest first. ``memory.
+        # resolutions`` is only the head in force now; this is what point-in-
+        # time answers and supersession read (Tier 5, ARCHITECTURE.md).
+        self.history: dict[str, list[Resolution]] = {}
 
     @property
     def enrichment_path(self) -> Path | None:
@@ -64,6 +81,7 @@ class LabelingStore:
         decision: str,
         rationale: str,
         decided_by: str = "reviewer",
+        valid_from: datetime | None = None,
     ) -> Resolution:
         decision = decision.upper().strip()
         if definition_id not in self.memory.metric_definitions:
@@ -75,16 +93,23 @@ class LabelingStore:
         if not decided_by.strip():
             raise LabelingError("decided_by is required")
 
+        decided_at = datetime.now(timezone.utc)
+        effective = _aware(valid_from) if valid_from is not None else decided_at
         previous = self.memory.resolutions.get(definition_id)
+        sequence = len(self.history.get(definition_id, ())) + 1
         resolution = Resolution(
-            resolution_id=f"resolution:{definition_id}:{len(self.memory.resolutions) + 1}",
+            resolution_id=f"resolution:{definition_id}:{sequence}",
             target_id=definition_id,
             decision=decision,
             rationale=rationale.strip(),
             decided_by=decided_by.strip(),
-            decided_at=datetime.now(timezone.utc),
+            decided_at=decided_at,
+            valid_from=effective,
         )
-        self.memory.resolutions[definition_id] = resolution
+        self.history.setdefault(definition_id, []).append(resolution)
+        # The head is whatever is in force now; a future-dated ruling does not
+        # displace the current one until its valid_from arrives.
+        self.memory.resolutions[definition_id] = self.resolution_as_of(definition_id) or resolution
         self.save()
         self.audit_ledger.append(
             "KNOWLEDGE_DECISION",
@@ -94,6 +119,7 @@ class LabelingStore:
                 "decision": resolution.decision,
                 "rationale": resolution.rationale,
                 "resolution_id": resolution.resolution_id,
+                "valid_from": effective.isoformat(),
             },
         )
         store = self.memory_store
@@ -104,6 +130,36 @@ class LabelingStore:
                 actor=resolution.decided_by,
             )
         return resolution
+
+    def resolution_as_of(self, definition_id: str, as_of: datetime | None = None) -> Resolution | None:
+        """The ruling in force for a definition at ``as_of`` (default: now).
+
+        A ruling is in force from its ``valid_from`` (falling back to
+        ``decided_at``) until its ``valid_to`` if set. When several qualify,
+        the one with the latest ``valid_from`` wins, then the latest decision.
+        Returns None when nothing was in force, which is how an answer asked
+        "as of" a date before any ruling reverts to needing review.
+        """
+        moment = _aware(as_of) if as_of is not None else datetime.now(timezone.utc)
+        history = self.history.get(definition_id)
+        if not history:
+            head = self.memory.resolutions.get(definition_id)
+            history = [head] if head is not None else []
+        in_force = [
+            resolution
+            for resolution in history
+            if _aware(resolution.valid_from or resolution.decided_at) <= moment
+            and (resolution.valid_to is None or moment < _aware(resolution.valid_to))
+        ]
+        if not in_force:
+            return None
+        return max(
+            in_force,
+            key=lambda resolution: (
+                _aware(resolution.valid_from or resolution.decided_at),
+                _aware(resolution.decided_at),
+            ),
+        )
 
     def render_resolution(self, resolution: Resolution, supersedes_id: str | None = None) -> str:
         """Render a ruling as the small text entry an agent reads verbatim."""
@@ -118,7 +174,10 @@ class LabelingStore:
             "decision": resolution.decision,
             "decided_by": resolution.decided_by,
             "decided_at": resolution.decided_at.isoformat(),
+            "valid_from": resolution.valid_from.isoformat() if resolution.valid_from else None,
+            "valid_to": resolution.valid_to.isoformat() if resolution.valid_to else None,
             "supersedes": supersedes_id,
+            "conflict": definition.conflict_id,
             "measure": f"{definition.measure[0]}({definition.measure[1]})",
             "grain": list(definition.grain),
             "filters": [f"{item.column} {item.op} {item.value}" for item in definition.default_filters],
@@ -182,7 +241,14 @@ class LabelingStore:
         if self.path is None:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {key: asdict(value) for key, value in self.memory.resolutions.items()}
+        payload = {
+            "format": 2,
+            "resolutions": {key: asdict(value) for key, value in self.memory.resolutions.items()},
+            "history": {
+                key: [asdict(resolution) for resolution in resolutions]
+                for key, resolutions in self.history.items()
+            },
+        }
         self.path.write_text(json.dumps(payload, indent=2, default=str) + "\n", encoding="utf-8")
         if self.enrichment_path:
             self.enrichment_path.write_text(
@@ -193,17 +259,21 @@ class LabelingStore:
         if self.path is None or not self.path.exists():
             return
         payload = json.loads(self.path.read_text(encoding="utf-8"))
-        for definition_id, values in payload.items():
+        if isinstance(payload, dict) and payload.get("format") == 2:
+            heads = payload.get("resolutions", {})
+            history = payload.get("history", {})
+        else:
+            # Pre-history layout: one resolution per definition, flat.
+            heads = payload
+            history = {key: [value] for key, value in payload.items()}
+        for definition_id, values in heads.items():
             if definition_id not in self.memory.metric_definitions:
                 continue
-            values["decided_at"] = datetime.fromisoformat(values["decided_at"])
-            values["valid_from"] = (
-                datetime.fromisoformat(values["valid_from"]) if values.get("valid_from") else None
-            )
-            values["valid_to"] = (
-                datetime.fromisoformat(values["valid_to"]) if values.get("valid_to") else None
-            )
-            self.memory.resolutions[definition_id] = Resolution(**values)
+            self.memory.resolutions[definition_id] = _decode_resolution(values)
+        for definition_id, items in history.items():
+            if definition_id not in self.memory.metric_definitions:
+                continue
+            self.history[definition_id] = [_decode_resolution(values) for values in items]
         if self.enrichment_path and self.enrichment_path.exists():
             self.enrichments = json.loads(self.enrichment_path.read_text(encoding="utf-8"))
             for definition_id, enrichment in self.enrichments.items():
@@ -261,6 +331,8 @@ class LabelingStore:
             items.append(
                 {
                     "definition_id": definition.definition_id,
+                    "status": definition.status,
+                    "conflict_id": definition.conflict_id,
                     "label": concept.preferred_label if concept else definition.measure[1],
                     "inferred_definition": definition.inferred_definition,
                     "structured": structured,

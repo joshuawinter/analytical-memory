@@ -130,6 +130,8 @@ def _format_investigation_text(payload: dict[str, Any]) -> str:
     lines = [f"STATUS: {payload['status']}"]
     if payload.get("message"):
         lines.append(f"MESSAGE: {payload['message']}")
+    if payload.get("candidates"):
+        lines.append("CANDIDATES (rival definitions a human must rule on): " + ", ".join(payload["candidates"]))
     if payload.get("definition"):
         lines.append(f"DEFINITION: {payload['definition']}")
     if payload.get("evidence"):

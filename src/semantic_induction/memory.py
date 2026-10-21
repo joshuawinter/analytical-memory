@@ -7,10 +7,11 @@ records without changing the validated SQL-induction contracts.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from collections.abc import Iterable
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 
-from semantic_induction.models import ColumnProfile, JoinEdge, Metric, Predicate, SemanticLayer, TableProfile
+from semantic_induction.models import ColumnProfile, Conflict, JoinEdge, Metric, Predicate, SemanticLayer, TableProfile
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,10 @@ class MetricDefinition:
     profile_notes: tuple[str, ...] = ()
     query_sql: str | None = None
     profile_tables: tuple[str, ...] = ()
+    # Set when this definition is one of several rival signatures Stage 4b
+    # surfaced for the same measure and grain. Definitions sharing a
+    # conflict_id are the fork a human has to rule on; see memory_from_layer.
+    conflict_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -380,30 +385,65 @@ def retrieve(
     return hits[:limit]
 
 
+def conflict_memory_id(conflict: Conflict) -> str:
+    """Stable, readable id for the fork a Stage 4b conflict represents."""
+    aggregation, column = conflict.measure
+    grain = "+".join(sorted(conflict.grain)) or "total"
+    return f"conflict:{aggregation.lower()}:{column}:{grain}"
+
+
 def memory_from_layer(
     layer: SemanticLayer,
     concepts: dict[str, BusinessConcept],
     evidence: dict[str, Evidence] | None = None,
     profiles: dict[str, TableProfile] | None = None,
+    conflicts: Iterable[Conflict] | None = None,
 ) -> AnalyticalMemory:
-    """Create memory records from the current layer without losing provenance."""
+    """Create memory records from the current layer without losing provenance.
+
+    ``conflicts`` is Stage 4b's output. Without it, memory only ever sees the
+    layer's merged metrics, and ``induce()`` merges a contested measure by
+    *intersecting* its queries' predicates: the disputed filter is dropped and
+    the single surviving definition is, in effect, the majority's. No fork
+    exists in memory, so nothing can be ruled on and frequency wins silently.
+    Found while building Tier 5 (ARCHITECTURE.md). With ``conflicts``
+    supplied, each ``DEFINITIONAL`` conflict's candidates are promoted as
+    separate ``CONTESTED`` definitions sharing a ``conflict_id``, and the
+    merged definition for that measure and grain is withheld.
+    """
     memory = AnalyticalMemory(
         concepts=dict(concepts), evidence=dict(evidence or {}), profiles=dict(profiles or {})
     )
+    contested: dict[tuple[tuple[str, str], frozenset[str]], Conflict] = {
+        (conflict.measure, conflict.grain): conflict
+        for conflict in (conflicts or ())
+        if conflict.kind == "DEFINITIONAL" and len(conflict.candidates) > 1
+    }
+
+    def _promote(metric: Metric, definition_id: str, concept_id: str, status: str, conflict_id: str | None) -> None:
+        evidence_ids = tuple(f"query:{source_ref}" for source_ref in metric.seen_in)
+        definition = metric_definition_from_metric(
+            metric, definition_id, concept_id, evidence_ids, status=status, profiles=profiles
+        )
+        memory.metric_definitions[definition_id] = replace(definition, conflict_id=conflict_id)
+        for source_ref in metric.seen_in:
+            evidence_id = f"query:{source_ref}"
+            memory.evidence.setdefault(evidence_id, Evidence(evidence_id, "SQL_QUERY", source_ref))
+
     for index, metric in enumerate(layer.metrics):
         concept_id = metric.measure[1]
         if concept_id not in memory.concepts:
             continue
-        definition_id = f"metric:{index}:{metric.measure[0].lower()}"
-        evidence_ids = tuple(f"query:{source_ref}" for source_ref in metric.seen_in)
-        definition = metric_definition_from_metric(
-            metric, definition_id, concept_id, evidence_ids, profiles=profiles
-        )
-        memory.metric_definitions[definition_id] = definition
-        for source_ref in metric.seen_in:
-            evidence_id = f"query:{source_ref}"
-            memory.evidence.setdefault(
-                evidence_id,
-                Evidence(evidence_id, "SQL_QUERY", source_ref),
-            )
+        if (metric.measure, metric.grain) in contested:
+            continue  # the intersection-merged definition would hide the fork
+        _promote(metric, f"metric:{index}:{metric.measure[0].lower()}", concept_id, "OBSERVED", None)
+
+    for (measure, _grain), conflict in sorted(contested.items(), key=lambda item: str(item[0])):
+        concept_id = measure[1]
+        if concept_id not in memory.concepts:
+            continue
+        conflict_id = conflict_memory_id(conflict)
+        ordered = sorted(conflict.candidates, key=lambda item: (-item.support, str(item.default_filters)))
+        for position, candidate in enumerate(ordered):
+            _promote(candidate, f"{conflict_id}:candidate:{position}", concept_id, "CONTESTED", conflict_id)
     return memory

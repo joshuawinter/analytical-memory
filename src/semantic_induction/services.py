@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from semantic_induction.investigate import InvestigationResult, investigate
@@ -22,8 +23,8 @@ class InvestigationService:
     def review_items(self) -> list[dict[str, object]]:
         return self.store.review_items(self.catalog)
 
-    def investigate(self, question: str) -> InvestigationResult:
-        return investigate(question, self.store, self.catalog, self.connection)
+    def investigate(self, question: str, as_of: datetime | None = None) -> InvestigationResult:
+        return investigate(question, self.store, self.catalog, self.connection, as_of=as_of)
 
     def record_decision(
         self,
@@ -33,6 +34,7 @@ class InvestigationService:
         decided_by: str,
         corrected_definition: str = "",
         aliases: str = "",
+        valid_from: datetime | None = None,
     ) -> Resolution:
         """Record a human's Stage 4c ruling. The decision and rationale must
 
@@ -41,8 +43,13 @@ class InvestigationService:
         ``decided_by`` or invent a rationale on the reviewer's behalf. This
         is the same call ``labeling_app.py``'s ``/label`` endpoint makes;
         every client goes through one path, one audit trail.
+
+        ``valid_from`` dates the ruling's effect; it defaults to now. A later
+        ruling on the same definition supersedes this one from its own
+        ``valid_from`` onward, and answers asked "as of" an earlier moment
+        still resolve under this one.
         """
-        resolution = self.store.label(definition_id, decision, rationale, decided_by)
+        resolution = self.store.label(definition_id, decision, rationale, decided_by, valid_from=valid_from)
         if resolution.decision == "APPROVE" and (corrected_definition or aliases):
             self.store.enrich(definition_id, corrected_definition, aliases)
         return resolution
@@ -59,4 +66,5 @@ def investigation_payload(result: InvestigationResult) -> dict[str, object]:
         "columns": result.columns,
         "rows": result.rows,
         "message": result.message,
+        "candidates": list(result.candidates),
     }

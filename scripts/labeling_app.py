@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from semantic_induction.aggregate import aggregate
+from semantic_induction.conflicts import detect_conflicts
 from semantic_induction.extract import extract_corpus
 from semantic_induction.induce import induce
 from semantic_induction.ingest import ingest
@@ -84,6 +85,10 @@ def build_store(
         with duckdb.connect(str(database), read_only=True) as c:
             profiles = profile_database(c, catalog, sample_size=5, top_values=5)
     layer = induce(aggregate(facts), catalog, facts, min_support=1, profiles=profiles)
+    # Stage 4b's rival signatures must reach memory as a fork, or induction's
+    # predicate intersection silently hands the majority its definition. See
+    # memory_from_layer and ARCHITECTURE.md's Tier 5 section.
+    conflicts = detect_conflicts(layer, facts, min_support=1, profiles=profiles)
     aliases_by_column: dict[str, set[str]] = {}
     for fact in facts:
       for aggregation in fact.aggregations:
@@ -98,7 +103,7 @@ def build_store(
         )
         for aggregation, column in layer.measures
     }
-    memory = memory_from_layer(layer, concepts, profiles=profiles)
+    memory = memory_from_layer(layer, concepts, profiles=profiles, conflicts=conflicts)
     if naming_provider == "anthropic":
         sql_by_id = {query.id: query.sql for query in queries}
         _apply_llm_naming(memory, sql_by_id, catalog)
