@@ -15,7 +15,8 @@ Tier 3 is optional calibration, prepared but not run.
 | 2. Tier 4 expansion to a reportable set | **done** | 23 generated + 3 handcrafted; precision 55%, recall 75% with profiles |
 | 3. Verify cited prior-art rows | **done** | 10 sources verified (SRC-035 to SRC-044); Airbnb, LinkedIn, Gartner unreachable, dropped from citations |
 | 4. License + README, clean-clone runnable | **done** | Apache-2.0; verified by a fresh clone from GitHub: 131 passed, 3 skipped; Tier 4 and 5 pass |
-| 5. Draft technical report | **draft v0.1** | `docs/PAPER.md`; needs Josh's read, author line, and a decision on venue |
+| 5. Draft technical report | **draft v0.1** | `docs/PAPER.md`; the canonical, citable version |
+| 6. Post version for any medium | **draft v0.1** | `docs/POST.md`, ~2,000 words, inline links, no platform formatting; Josh to read |
 | Tier 3 preparation (not execution) | **done** | `--dry-run` on both scripts; client installed (anthropic 2.0.0); ~$0.06 typical for the full TPC-H run on sonnet-4-5 |
 
 ## Findings worth carrying into the paper
@@ -45,9 +46,11 @@ Tier 3 is optional calibration, prepared but not run.
 
 - **Copyright name.** LICENSE says "Copyright 2026 Josh Parsons", taken from
   the git author. Correct it if the legal name or an entity should appear.
-- **Venue and length.** The draft is a practitioner-facing technical report
-  of about 3,800 words. Trim for a blog post, or expand Sections 3 and 5 for
-  a workshop submission.
+- **Venue.** Decided 2026-10-21: the repo holds the canonical report
+  (`PAPER.md`); a trimmed post (`POST.md`) is prepared for whichever medium
+  Josh picks. arXiv is deferred until there is a response worth following.
+- **Byline.** POST.md ends with a one-line bio and an independence note;
+  edit or remove.
 - **Investor deck.** Still tracked in the repo and now public with the
   license. Keep, move, or delete.
 - **Tier 3.** Prepared, priced at cents, not run. Say so if an appendix run
@@ -87,3 +90,6 @@ API ledger: $0.00 (no live call has ever been made). Check with
   citing only verified sources (SRC-011 to SRC-044). All five steps of the
   track have a first version. Remaining work is Josh's: read, decide venue,
   confirm the copyright line, decide the deck's fate.
+- 2026-10-21: Venue decided (repo + post). `docs/POST.md` v0.1 written,
+  about 2,000 words, self-contained, inline links only, ready to paste into
+  any platform. Awaiting Josh's read of both documents.
