@@ -14,8 +14,8 @@ Tier 3 is optional calibration, prepared but not run.
 | 1. Tier 5 harness (rulings outrank frequency) | **done** | 4/4 scenarios pass, both counters zero; `scripts/run_tier5.py` |
 | 2. Tier 4 expansion to a reportable set | **done** | 23 generated + 3 handcrafted; precision 55%, recall 75% with profiles |
 | 3. Verify cited prior-art rows | **done** | 10 sources verified (SRC-035 to SRC-044); Airbnb, LinkedIn, Gartner unreachable, dropped from citations |
-| 4. License + README, clean-clone runnable | not started | default Apache-2.0 |
-| 5. Draft technical report | not started | `docs/PAPER.md` |
+| 4. License + README, clean-clone runnable | **done** | Apache-2.0; verified by a fresh clone from GitHub: 131 passed, 3 skipped; Tier 4 and 5 pass |
+| 5. Draft technical report | **draft v0.1** | `docs/PAPER.md`; needs Josh's read, author line, and a decision on venue |
 | Tier 3 preparation (not execution) | **done** | `--dry-run` on both scripts; client installed (anthropic 2.0.0); ~$0.06 typical for the full TPC-H run on sonnet-4-5 |
 
 ## Findings worth carrying into the paper
@@ -43,8 +43,18 @@ Tier 3 is optional calibration, prepared but not run.
 
 ## Decisions pending from Josh
 
-None blocking. Defaults in use: Apache-2.0 license; investor deck untouched;
-live-run model stays the RUNBOOK's setting.
+- **Copyright name.** LICENSE says "Copyright 2026 Josh Parsons", taken from
+  the git author. Correct it if the legal name or an entity should appear.
+- **Venue and length.** The draft is a practitioner-facing technical report
+  of about 3,800 words. Trim for a blog post, or expand Sections 3 and 5 for
+  a workshop submission.
+- **Investor deck.** Still tracked in the repo and now public with the
+  license. Keep, move, or delete.
+- **Tier 3.** Prepared, priced at cents, not run. Say so if an appendix run
+  is wanted.
+
+Defaults in use: Apache-2.0 license; investor deck untouched; live-run model
+stays the RUNBOOK's setting.
 
 ## Spend
 
@@ -69,3 +79,11 @@ API ledger: $0.00 (no live call has ever been made). Check with
   corrected to 2010. Airbnb Minerva (Medium 403), LinkedIn UMP (404), and
   Gartner (paywall) could not be reached and are not cited. Next: license
   and README.
+- 2026-10-21: License, README, pyproject metadata. A fresh clone from GitHub
+  exposed two defects (ruling tie-break on equal timestamps; Tier 4 exit code
+  without a database), both fixed with tests. Re-clone: 131 passed, 3
+  skipped, Tier 4 and 5 pass, ledger $0.
+- 2026-10-21: `docs/PAPER.md` draft v0.1 written, about 3,800 words,
+  citing only verified sources (SRC-011 to SRC-044). All five steps of the
+  track have a first version. Remaining work is Josh's: read, decide venue,
+  confirm the copyright line, decide the deck's fate.
