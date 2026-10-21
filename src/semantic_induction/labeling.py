@@ -146,20 +146,26 @@ class LabelingStore:
             head = self.memory.resolutions.get(definition_id)
             history = [head] if head is not None else []
         in_force = [
-            resolution
-            for resolution in history
+            (index, resolution)
+            for index, resolution in enumerate(history)
             if _aware(resolution.valid_from or resolution.decided_at) <= moment
             and (resolution.valid_to is None or moment < _aware(resolution.valid_to))
         ]
         if not in_force:
             return None
-        return max(
+        # Latest valid_from wins; on a tie the later-recorded ruling wins.
+        # Two rulings recorded within one clock tick (common on a fast fresh
+        # process) have identical timestamps, and max() alone would return
+        # the earlier one, resurrecting a superseded decision.
+        _index, winner = max(
             in_force,
-            key=lambda resolution: (
-                _aware(resolution.valid_from or resolution.decided_at),
-                _aware(resolution.decided_at),
+            key=lambda item: (
+                _aware(item[1].valid_from or item[1].decided_at),
+                _aware(item[1].decided_at),
+                item[0],
             ),
         )
+        return winner
 
     def render_resolution(self, resolution: Resolution, supersedes_id: str | None = None) -> str:
         """Render a ruling as the small text entry an agent reads verbatim."""

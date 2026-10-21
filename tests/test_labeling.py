@@ -44,6 +44,23 @@ def test_label_requires_valid_decision_and_rationale():
         store.label("metric:sales", "APPROVE", "")
 
 
+def test_rulings_with_identical_timestamps_resolve_to_the_later_recorded_one():
+    # Two rulings recorded within one clock tick carry equal valid_from and
+    # (often) equal decided_at. The later one must win, or a superseded
+    # ruling resurfaces as the head. Seen on a clean-clone test run where
+    # the process was fast enough to hit the tie.
+    from datetime import datetime, timezone
+
+    store = _store()
+    moment = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    store.label("metric:sales", "clarify", "Which amount?", "analyst", valid_from=moment)
+    approve = store.label("metric:sales", "approve", "Gross amount.", "finance", valid_from=moment)
+
+    assert store.resolution_as_of("metric:sales", moment) == approve
+    assert store.memory.resolutions["metric:sales"] == approve
+
+
 def test_review_items_surfaces_unstructured_candidates_flagged_not_dropped():
     # A grain column referencing a CTE alias ("tmp1") can't be safely
     # flattened into a governed measure/grain/filter definition -- it must

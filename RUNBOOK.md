@@ -32,8 +32,11 @@ py -3.11 -m venv .venv
 Expected result currently:
 
 ```text
-132 passed
+134 passed
 ```
+
+On a clean clone before the TPC-DS database exists (section 9), three Tier 4
+profile-evidence tests skip instead: `131 passed, 3 skipped`.
 
 This path makes no network requests and does not require an API key.
 

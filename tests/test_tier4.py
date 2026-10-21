@@ -122,3 +122,15 @@ def test_generated_tier4_without_profiles_flags_every_difference():
     assert report.recall() == 1.0
     assert report.unexpected_failures == ()
     assert report.surprising_passes == ()
+
+
+def test_handcrafted_tier4_without_profiles_has_only_its_documented_gap():
+    # What a clean clone runs before any database is generated. The
+    # wholesale_cost floor is flagged without cardinality evidence; that is
+    # the documented over-flag, and nothing else may fail.
+    from scripts.run_tier4 import handcrafted_scenarios
+
+    report = run_tier4(_conflicts(with_profiles=False), handcrafted_scenarios(with_profiles=False))
+
+    assert report.unexpected_failures == ()
+    assert [r.scenario_id for r in report.results if not r.correct] == ["wholesale_cost_floor"]

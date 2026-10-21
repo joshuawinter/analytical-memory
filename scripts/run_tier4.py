@@ -76,6 +76,27 @@ SCENARIOS = [
 ]
 
 
+def handcrafted_scenarios(with_profiles: bool) -> list[Tier4Scenario]:
+    """The handcrafted set with its no-profile known gap marked.
+
+    Without Stage 1b profiles the classifier has no cardinality evidence,
+    so the single-observation wholesale_cost filter is flagged: the same
+    documented over-flag as the generated high_card_scope family.
+    """
+    if with_profiles:
+        return list(SCENARIOS)
+    return [
+        scenario if scenario.scenario_id != "wholesale_cost_floor" else Tier4Scenario(
+            scenario.scenario_id,
+            scenario.query_ids,
+            scenario.expect_conflict,
+            scenario.description + " Without profiles this is a documented over-flag.",
+            known_gap=True,
+        )
+        for scenario in SCENARIOS
+    ]
+
+
 def _percent(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.0%}"
 
@@ -130,7 +151,10 @@ def main() -> int:
     if args.set in ("handcrafted", "all"):
         _, queries = ingest(ddl, root / "tier4/queries")
         facts = extract_corpus(queries, catalog)
-        handcrafted = run_tier4(detect_conflicts(None, facts, min_support=1, profiles=profiles), SCENARIOS)
+        handcrafted = run_tier4(
+            detect_conflicts(None, facts, min_support=1, profiles=profiles),
+            handcrafted_scenarios(with_profiles=profiles is not None),
+        )
         _print_report("handcrafted", handcrafted, args.verbose)
         reports.append(handcrafted)
     if args.set in ("generated", "all"):
