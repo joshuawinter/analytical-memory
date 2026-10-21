@@ -18,7 +18,7 @@ the raw-schema arm.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -249,6 +249,29 @@ def _anthropic_client(config: EnvironmentNamingConfig) -> Any:
     from semantic_induction.spend import metered_anthropic_client
 
     return metered_anthropic_client(config, purpose="tier3", component="Tier 3 Anthropic composers")
+
+
+def dry_run_responder(request: Mapping[str, Any]) -> str:
+    """Canned text for a Tier 3 dry run, shaped so both composers parse it.
+
+    The raw-schema arm gets a trivial query; the induced-layer arm gets the
+    first demonstrated signature from the vocabulary it was shown, so the
+    plan resolves and compiles and the whole path executes. Match rates from
+    a dry run are meaningless by construction; only the request log matters.
+    """
+    try:
+        payload = json.loads(request["messages"][0]["content"])
+    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
+        payload = {}
+    if "schema" in payload:
+        return json.dumps({"sql": "SELECT 1 AS metric_value"})
+    signatures = (payload.get("vocabulary") or {}).get("metric_signatures") or []
+    if signatures:
+        first = signatures[0]
+        return json.dumps(
+            {"aggregation": first["aggregation"], "column": first["column"], "dimensions": first["dimensions"], "filters": []}
+        )
+    return json.dumps({"aggregation": "SUM", "column": "none.none", "dimensions": [], "filters": []})
 
 
 def _parse_json_object(text: str) -> dict[str, object]:

@@ -45,13 +45,23 @@ from semantic_induction.induce import induce  # noqa: E402
 from semantic_induction.ingest import ingest  # noqa: E402
 from semantic_induction.naming import EnvironmentNamingConfig  # noqa: E402
 from semantic_induction.profile import profile_database  # noqa: E402
-from semantic_induction.spend import open_ledger  # noqa: E402
+from semantic_induction.spend import (  # noqa: E402
+    COMPARISON_MODELS,
+    DryRunClient,
+    StaticModelConfig,
+    estimate_dry_run,
+    exact_input_tokens,
+    open_cache,
+    open_ledger,
+    render_dry_run,
+)
 from semantic_induction.tier3 import (  # noqa: E402
     AnthropicPlanComposer,
     AnthropicSqlComposer,
     BusinessQuestion,
     INDUCED_LAYER,
     RAW_SCHEMA,
+    dry_run_responder,
     run_tier3,
 )
 
@@ -164,14 +174,21 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--database", type=Path, default=ROOT / "data/tpch/tpch.duckdb")
     parser.add_argument("--min-support", type=int, default=1)
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="make no API call; record every request a live run would send and estimate its cost",
+    )
+    parser.add_argument(
+        "--model", default=None,
+        help="model id for the dry-run estimate (default: SEMANTIC_INDUCTION_MODEL, else claude-sonnet-4-5)",
+    )
+    parser.add_argument(
+        "--exact-tokens", action="store_true",
+        help="with --dry-run and a key set: use the free count_tokens endpoint for exact input counts",
+    )
     args = parser.parse_args()
 
     config = EnvironmentNamingConfig()
-    if not config.api_key:
-        print(f"missing API key environment variable: {config.api_key_env}", file=sys.stderr)
-        print("set it in this terminal before running, e.g.:", file=sys.stderr)
-        print('  $env:SEMANTIC_INDUCTION_API_KEY = "..."', file=sys.stderr)
-        return 1
     if not args.database.exists():
         print(f"database not found: {args.database}", file=sys.stderr)
         print("generate it first, e.g.:", file=sys.stderr)
@@ -182,12 +199,26 @@ def main() -> int:
         )
         return 1
 
-    try:
-        raw_schema_composer = AnthropicSqlComposer(config)
-        induced_layer_composer = AnthropicPlanComposer(config)
-    except RuntimeError as error:
-        print(str(error), file=sys.stderr)
-        return 1
+    dry: DryRunClient | None = None
+    if args.dry_run:
+        model = args.model or config.model or "claude-sonnet-4-5"
+        dry = DryRunClient(dry_run_responder, cache=open_cache())
+        static = StaticModelConfig(model)
+        raw_schema_composer = AnthropicSqlComposer(static, client=dry)
+        induced_layer_composer = AnthropicPlanComposer(static, client=dry)
+    else:
+        if not config.api_key:
+            print(f"missing API key environment variable: {config.api_key_env}", file=sys.stderr)
+            print("set it in this terminal before running, e.g.:", file=sys.stderr)
+            print('  $env:SEMANTIC_INDUCTION_API_KEY = "..."', file=sys.stderr)
+            print("or run with --dry-run to see what it would cost first.", file=sys.stderr)
+            return 1
+        try:
+            raw_schema_composer = AnthropicSqlComposer(config)
+            induced_layer_composer = AnthropicPlanComposer(config)
+        except RuntimeError as error:
+            print(str(error), file=sys.stderr)
+            return 1
 
     catalog, queries = ingest(ROOT / "data/tpch/ddl.sql", ROOT / "data/tpch/queries")
     facts = extract_corpus(queries, catalog)
@@ -224,6 +255,17 @@ def main() -> int:
         print(f"[{result.arm}] {result.question_id}: {status}{detail}{sql_line}")
 
     print()
+    if dry is not None:
+        print("(dry run: canned responses, so the match rates above are meaningless)")
+        models = [dry.requests[0].model if dry.requests else "claude-sonnet-4-5", *COMPARISON_MODELS]
+        exact: dict[str, int] | None = None
+        if args.exact_tokens:
+            if config.api_key:
+                exact = exact_input_tokens(dry.requests, config.api_key)
+            else:
+                print("--exact-tokens needs SEMANTIC_INDUCTION_API_KEY; falling back to approximate counts")
+        print(render_dry_run(estimate_dry_run(dry.requests, models, exact), open_ledger(), exact=exact is not None))
+        return 0
     print(f"raw schema match rate:    {report.match_rate(RAW_SCHEMA):.0%}")
     print(f"induced layer match rate: {report.match_rate(INDUCED_LAYER):.0%}")
     print(f"delta (induced - raw):    {report.delta():+.0%}")

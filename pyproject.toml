@@ -15,7 +15,7 @@ dev = [
     "pytest>=9.0",
 ]
 anthropic = [
-    "anthropic>=0.40",
+    "anthropic>=2.0",
 ]
 
 [build-system]

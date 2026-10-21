@@ -33,7 +33,7 @@ import hashlib
 import json
 import os
 import sys
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -468,3 +468,194 @@ def metered_anthropic_client(
         ) from error
     inner = Anthropic(api_key=config.api_key)
     return MeteredClient(inner, open_ledger(directory), open_cache(directory), purpose=purpose)
+
+
+# ---------------------------------------------------------------------------
+# Dry runs: count and price the calls a live run would make, with no key.
+# ---------------------------------------------------------------------------
+
+TYPICAL_OUTPUT_TOKENS = 200
+COMPARISON_MODELS = ("claude-sonnet-4-5", "claude-sonnet-5", "claude-opus-5", "claude-fable-5-1")
+
+
+class StaticModelConfig:
+    """A config with a fixed model and optional key, for dry runs and tests.
+
+    Mirrors ``EnvironmentNamingConfig``'s attributes so the Tier 3 composers
+    and the naming provider accept it unchanged.
+    """
+
+    api_key_env = "SEMANTIC_INDUCTION_API_KEY"
+    model_env = "SEMANTIC_INDUCTION_MODEL"
+
+    def __init__(self, model: str, api_key: str | None = None):
+        self._model = model
+        self._api_key = api_key
+
+    @property
+    def api_key(self) -> str | None:
+        return self._api_key
+
+    @property
+    def model(self) -> str | None:
+        return self._model
+
+
+def request_text_chars(request: Mapping[str, Any]) -> int:
+    """Characters of prompt text in a request: system plus every message's content."""
+
+    def _chars(content: Any) -> int:
+        if content is None:
+            return 0
+        if isinstance(content, str):
+            return len(content)
+        if isinstance(content, Mapping):
+            return _chars(content.get("text")) + _chars(content.get("content"))
+        if isinstance(content, (list, tuple)):
+            return sum(_chars(item) for item in content)
+        return len(str(content))
+
+    total = _chars(request.get("system"))
+    for message in request.get("messages", ()) or ():
+        total += _chars(message.get("content") if isinstance(message, Mapping) else message)
+    return total
+
+
+def approximate_tokens(chars: int) -> int:
+    """Rough token estimate from character count. Labelled approximate wherever shown."""
+    return max(1, round(chars / 4))
+
+
+@dataclass(frozen=True)
+class RecordedRequest:
+    model: str
+    request_sha256: str
+    input_chars: int
+    max_tokens: int
+    cached: bool
+    request: Mapping[str, Any]
+
+
+class DryRunClient:
+    """Record what a live run would send and answer from a canned responder.
+
+    Touches neither the ledger nor the cache. If a ``cache`` is supplied it is
+    only consulted to report which requests a live run would get for free.
+    ``responder`` receives the request mapping and returns the text block a
+    real model would have produced.
+    """
+
+    def __init__(self, responder: Callable[[Mapping[str, Any]], str], cache: ResponseCache | None = None):
+        self.responder = responder
+        self.cache = cache
+        self.requests: list[RecordedRequest] = []
+        self.messages = self
+
+    def create(self, **request: Any) -> CachedMessage:
+        model = str(request.get("model", ""))
+        key = canonical_request_sha256(request)
+        cached = self.cache is not None and self.cache.get(key) is not None
+        self.requests.append(
+            RecordedRequest(model, key, request_text_chars(request), int(request.get("max_tokens", 0) or 0), cached, dict(request))
+        )
+        return CachedMessage(
+            model=model,
+            stop_reason="end_turn",
+            content=(CachedTextBlock(self.responder(request)),),
+            usage=Usage(),
+            from_cache=False,
+        )
+
+
+def exact_input_tokens(requests: Iterable[RecordedRequest], api_key: str) -> dict[str, int]:
+    """Exact input token counts from the API's free count_tokens endpoint.
+
+    Needs a key but costs nothing. Returns ``{request_sha256: input_tokens}``.
+    """
+    from anthropic import Anthropic
+
+    client = Anthropic(api_key=api_key)
+    counts: dict[str, int] = {}
+    for recorded in requests:
+        if recorded.request_sha256 in counts:
+            continue
+        kwargs: dict[str, Any] = {"model": recorded.model, "messages": recorded.request["messages"]}
+        if recorded.request.get("system") is not None:
+            kwargs["system"] = recorded.request["system"]
+        counts[recorded.request_sha256] = int(client.messages.count_tokens(**kwargs).input_tokens)
+    return counts
+
+
+@dataclass(frozen=True)
+class DryRunEstimate:
+    model: str
+    live_calls: int
+    cached_calls: int
+    input_tokens: int
+    typical_output_tokens: int
+    max_output_tokens: int
+    typical_cost_usd: float | None
+    upper_cost_usd: float | None
+
+
+def estimate_dry_run(
+    requests: Iterable[RecordedRequest],
+    models: Iterable[str],
+    exact_tokens: Mapping[str, int] | None = None,
+    typical_output_tokens: int = TYPICAL_OUTPUT_TOKENS,
+) -> list[DryRunEstimate]:
+    recorded = list(requests)
+    live = [item for item in recorded if not item.cached]
+    cached = len(recorded) - len(live)
+    if exact_tokens:
+        input_tokens = sum(exact_tokens.get(item.request_sha256, approximate_tokens(item.input_chars)) for item in live)
+    else:
+        input_tokens = sum(approximate_tokens(item.input_chars) for item in live)
+    typical_out = len(live) * typical_output_tokens
+    max_out = sum(item.max_tokens for item in live)
+    estimates = []
+    for model in dict.fromkeys(models):
+        price = price_for(model)
+        if price is None:
+            estimates.append(DryRunEstimate(model, len(live), cached, input_tokens, typical_out, max_out, None, None))
+            continue
+        base = input_tokens * price.input_per_mtok
+        estimates.append(
+            DryRunEstimate(
+                model, len(live), cached, input_tokens, typical_out, max_out,
+                (base + typical_out * price.output_per_mtok) / 1_000_000,
+                (base + max_out * price.output_per_mtok) / 1_000_000,
+            )
+        )
+    return estimates
+
+
+def render_dry_run(
+    estimates: Iterable[DryRunEstimate],
+    ledger: SpendLedger | None = None,
+    exact: bool = False,
+) -> str:
+    estimates = list(estimates)
+    if not estimates:
+        return "dry run: no requests recorded"
+    first = estimates[0]
+    token_note = "exact (count_tokens)" if exact else "approximate (chars / 4)"
+    lines = [
+        f"dry run: {first.live_calls} live call(s) would be made; {first.cached_calls} already cached (free)",
+        f"input tokens: {first.input_tokens:,} {token_note}; output: ~{first.typical_output_tokens:,} typical, "
+        f"{first.max_output_tokens:,} at max_tokens",
+        "estimated cost by model (typical / upper bound at max_tokens):",
+    ]
+    for item in estimates:
+        if item.typical_cost_usd is None:
+            lines.append(f"  {item.model:20} no list price in spend.PRICES")
+        else:
+            lines.append(f"  {item.model:20} ${item.typical_cost_usd:.4f} / ${item.upper_cost_usd:.4f}")
+    if ledger is not None:
+        spent = ledger.total_usd()
+        lines.append(
+            f"ledger so far: ${spent:.4f}; ceiling ${ledger.ceiling_usd:.2f}; hard stop ${ledger.hard_stop_usd:.2f}; "
+            f"headroom to hard stop ${max(0.0, ledger.hard_stop_usd - spent):.2f}"
+        )
+    lines.append(f"prices verified {PRICES_VERIFIED}; nothing was sent and nothing was recorded")
+    return "\n".join(lines)

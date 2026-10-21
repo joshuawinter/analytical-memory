@@ -32,7 +32,7 @@ py -3.11 -m venv .venv
 Expected result currently:
 
 ```text
-124 passed
+129 passed
 ```
 
 This path makes no network requests and does not require an API key.
@@ -157,8 +157,29 @@ API key, and nothing in the paper or the pilot depends on its number.
 
 The offline test suite (`pytest`, section 2) already proves the harness
 mechanics work end to end against the real induced TPC-H layer, using
-deterministic mock composers instead of a live model. To get the live
-number, run it against Claude:
+deterministic mock composers instead of a live model.
+
+**Dry run first.** No key needed. This records every request a live run
+would send, prices it against first-party list rates for several models,
+and shows how much of it the response cache would already serve for free:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_tier3.py --dry-run
+.\.venv\Scripts\python.exe scripts\run_tier3.py --dry-run --model claude-opus-5
+```
+
+Dry run on 2026-10-21: 10 live calls, roughly 9,200 input tokens, about
+$0.06 typical and $0.18 at the output cap on `claude-sonnet-4-5`; under
+$0.20 typical on `claude-fable-5-1`. The match rates a dry run prints are
+meaningless (responses are canned); only the request log and estimate
+matter. With a key set, `--exact-tokens` replaces the chars-over-four
+approximation with the API's free `count_tokens` endpoint.
+
+The optional client is installed as `anthropic` 2.x (`pip install -e
+".[anthropic]"`); the surface this project uses (`messages.create`,
+`messages.count_tokens`, `response.usage`) was checked against 2.0.0.
+
+To get the live number, run it against Claude:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e ".[anthropic]"
@@ -537,7 +558,9 @@ narrative and the calibration result are one story instead of two
 disconnected artifacts. Like section 10, it needs a live model and nothing
 in the paper depends on it.
 
-Requires section 15's `fulfillment.duckdb` to exist first:
+Requires section 15's `fulfillment.duckdb` to exist first. Supports the same
+`--dry-run`, `--model`, and `--exact-tokens` flags as section 10 (dry run on
+2026-10-21: 2 live calls, about a cent):
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\build_fulfillment_demo.py

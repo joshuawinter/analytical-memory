@@ -16,7 +16,7 @@ Tier 3 is optional calibration, prepared but not run.
 | 3. Verify cited prior-art rows | not started | only rows the paper cites |
 | 4. License + README, clean-clone runnable | not started | default Apache-2.0 |
 | 5. Draft technical report | not started | `docs/PAPER.md` |
-| Tier 3 preparation (not execution) | not started | key-less dry run, ledger hard stop, cache |
+| Tier 3 preparation (not execution) | **done** | `--dry-run` on both scripts; client installed (anthropic 2.0.0); ~$0.06 typical for the full TPC-H run on sonnet-4-5 |
 
 ## Findings worth carrying into the paper
 
@@ -28,6 +28,9 @@ Tier 3 is optional calibration, prepared but not run.
   `memory_from_layer(conflicts=...)`.
 - Rulings now have validity windows and history; questions can be asked
   `as_of` a moment. Supersession is tested.
+- **Tier 3 is cheap.** A dry run prices the full TPC-H three-arm run at
+  cents on every current model. If Josh wants it in an appendix, cost is
+  not the objection; the objection remains that it measures part B.
 
 ## Decisions pending from Josh
 
@@ -45,3 +48,6 @@ API ledger: $0.00 (no live call has ever been made). Check with
 - 2026-10-21: Tier 5 built and passing. Three code gaps fixed (fork not in
   memory; validity windows ignored; only head ruling kept). Suite at 124
   tests.
+- 2026-10-21: Tier 3 prepared. Dry-run mode records and prices every call
+  without a key; exact counts available via count_tokens when a key is set.
+  Suite at 129 tests. Next: Tier 4 expansion.
