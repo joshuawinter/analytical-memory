@@ -994,9 +994,64 @@ than needing a live model like Tier 3.
 
 This is a first, small labeled set, not a swept evaluation -- it proves the
 harness and formula work end to end and locks in the current classification
-behavior as a regression guard. Expanding it (more scenarios, perturbing
-real TPC-DS templates directly rather than hand-authored pairs) is the
-natural next step before trusting precision/recall numbers at any scale.
+behavior as a regression guard.
+
+**Expanded set, 2026-10-21.** `scripts/build_tier4_corpus.py` writes 23
+further scenarios to `data/tpcds/tier4/generated/`, each an isolated corpus
+so predicate recurrence cannot leak between them, across eight families:
+recurring definitional filter, single-observation definitional filter, scope
+filter on a low-cardinality column, recurring scope filter, scope filter on
+a high-cardinality column, grain variation, cosmetic rewrites, and a
+different measure. **Labels are semantic**: does a reviewer see two
+definitions of the measure (what counts as a sale) or one definition at
+different scopes, grains, or wording? They are not derived from what the
+classifier is expected to do, and seven of them are set against it on
+purpose, marked `known_gap` with the reason, because Tier 4 exists to
+measure the classifier rather than to pass.
+
+Result with Stage 1b profiles (the production configuration):
+
+| | flagged | not flagged |
+|---|---|---|
+| definitional (8) | 6 | 2 |
+| not definitional (15) | 5 | 10 |
+
+Precision 55%, recall 75%, noise rate 45%. Without profiles every differing
+predicate is candidate-defining: recall 100%, precision 47%. Every
+misclassification in both modes is a documented known gap; there are no
+undocumented ones, and no documented gap passes unexpectedly.
+
+What the misses and over-flags are:
+
+- **Two misses (single_definitional).** A genuine what-counts filter
+  (`ss_quantity > 0`) observed once on a high-cardinality column. The
+  recurrence-or-low-cardinality rule treats it as narrowing. This is the
+  precision-over-recall trade this section asked for, and it is the right
+  trade in isolation.
+- **Three over-flags (low_card_scope).** A scope filter seen once on a
+  column with twelve or fewer distinct values (`d_weekend = 'Y'`,
+  `i_category = 'Books'`, `d_qoy = 4`). The low-cardinality rule was
+  written for real status columns; on TPC-DS it fires on calendar and
+  category scopes.
+- **Two over-flags (recurring_scope).** The same scope filter in two
+  queries (`d_year = 2001`). The recurrence rule makes any popular scope a
+  rival definition.
+
+So on this labelled set the classifier does **not** meet the "precision over
+recall" goal stated above: it over-flags scopes more often than it misses
+definitions. That is the honest Tier 4 result for the paper, and it points
+at the fix this section already names: materiality ranking (do the rival
+signatures produce materially different numbers on the questions people
+ask?) and rationale-learned rules from Stage 4c, rather than structural
+heuristics alone. A scope filter changes the number because it changes the
+population; a definitional filter changes the number for the same
+population. Recurrence and cardinality cannot see that distinction;
+execution can.
+
+`tests/test_tier4.py` pins the confusion matrix in both modes and asserts
+the failing set equals the documented known gaps, so any change in
+classifier behaviour, better or worse, is visible as a test change rather
+than a silent drift in the paper's number.
 
 **Tier 5 — Rulings outrank frequency.** Specified 2026-10-21, built the same
 day: `tier5.py`, `scripts/run_tier5.py`, `tests/test_tier5.py`, fixtures in

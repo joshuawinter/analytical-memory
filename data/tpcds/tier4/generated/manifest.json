@@ -1,0 +1,381 @@
+{
+  "generator": "scripts/build_tier4_corpus.py",
+  "scenarios": [
+    {
+      "scenario_id": "recurring_definitional__store_revenue_by_year",
+      "family": "recurring_definitional",
+      "base": "store_revenue_by_year",
+      "base_description": "store net paid by calendar year",
+      "expect_conflict": true,
+      "expect_conflict_without_profiles": true,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "quantity-zero lines are voids or giveaways; excluding them changes what counts as a sale",
+      "query_ids": [
+        "store_revenue_by_year_a",
+        "store_revenue_by_year_b",
+        "store_revenue_by_year_c",
+        "store_revenue_by_year_d"
+      ]
+    },
+    {
+      "scenario_id": "recurring_definitional__catalog_revenue_by_year",
+      "family": "recurring_definitional",
+      "base": "catalog_revenue_by_year",
+      "base_description": "catalog net paid by calendar year",
+      "expect_conflict": true,
+      "expect_conflict_without_profiles": true,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "same what-counts split on the catalog channel",
+      "query_ids": [
+        "catalog_revenue_by_year_a",
+        "catalog_revenue_by_year_b",
+        "catalog_revenue_by_year_c",
+        "catalog_revenue_by_year_d"
+      ]
+    },
+    {
+      "scenario_id": "recurring_definitional__web_sales_by_year_month",
+      "family": "recurring_definitional",
+      "base": "web_sales_by_year_month",
+      "base_description": "web extended sales price by year and month",
+      "expect_conflict": true,
+      "expect_conflict_without_profiles": true,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "same what-counts split on the web channel",
+      "query_ids": [
+        "web_sales_by_year_month_a",
+        "web_sales_by_year_month_b",
+        "web_sales_by_year_month_c",
+        "web_sales_by_year_month_d"
+      ]
+    },
+    {
+      "scenario_id": "recurring_definitional__store_profit_by_year_category",
+      "family": "recurring_definitional",
+      "base": "store_profit_by_year_category",
+      "base_description": "store net profit by year and item category",
+      "expect_conflict": true,
+      "expect_conflict_without_profiles": true,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "full-price-only profit is a different definition of profit, not a narrower question",
+      "query_ids": [
+        "store_profit_by_year_category_a",
+        "store_profit_by_year_category_b",
+        "store_profit_by_year_category_c",
+        "store_profit_by_year_category_d"
+      ]
+    },
+    {
+      "scenario_id": "recurring_definitional__store_ticket_count_by_year",
+      "family": "recurring_definitional",
+      "base": "store_ticket_count_by_year",
+      "base_description": "store sales line count by calendar year",
+      "expect_conflict": true,
+      "expect_conflict_without_profiles": true,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "counting only lines that sold vs every line is a definitional split for a count",
+      "query_ids": [
+        "store_ticket_count_by_year_a",
+        "store_ticket_count_by_year_b",
+        "store_ticket_count_by_year_c",
+        "store_ticket_count_by_year_d"
+      ]
+    },
+    {
+      "scenario_id": "recurring_definitional__store_sales_by_customer_state",
+      "family": "recurring_definitional",
+      "base": "store_sales_by_customer_state",
+      "base_description": "store extended sales price by customer state",
+      "expect_conflict": true,
+      "expect_conflict_without_profiles": true,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "what-counts split with a non-date dimension in the grain",
+      "query_ids": [
+        "store_sales_by_customer_state_a",
+        "store_sales_by_customer_state_b",
+        "store_sales_by_customer_state_c",
+        "store_sales_by_customer_state_d"
+      ]
+    },
+    {
+      "scenario_id": "single_definitional__store_revenue_by_year",
+      "family": "single_definitional",
+      "base": "store_revenue_by_year",
+      "base_description": "store net paid by calendar year",
+      "expect_conflict": true,
+      "expect_conflict_without_profiles": true,
+      "known_gap": true,
+      "known_gap_without_profiles": false,
+      "rationale": "A genuine what-counts filter observed once on a high-cardinality column. Stage 4b requires recurrence or low cardinality, so it treats this as narrowing: an expected miss, the precision-over-recall trade ARCHITECTURE.md accepts. Without profiles the conservative path flags it.",
+      "query_ids": [
+        "store_revenue_by_year_a",
+        "store_revenue_by_year_b",
+        "store_revenue_by_year_c"
+      ]
+    },
+    {
+      "scenario_id": "single_definitional__catalog_revenue_by_year",
+      "family": "single_definitional",
+      "base": "catalog_revenue_by_year",
+      "base_description": "catalog net paid by calendar year",
+      "expect_conflict": true,
+      "expect_conflict_without_profiles": true,
+      "known_gap": true,
+      "known_gap_without_profiles": false,
+      "rationale": "A genuine what-counts filter observed once on a high-cardinality column. Stage 4b requires recurrence or low cardinality, so it treats this as narrowing: an expected miss, the precision-over-recall trade ARCHITECTURE.md accepts. Without profiles the conservative path flags it.",
+      "query_ids": [
+        "catalog_revenue_by_year_a",
+        "catalog_revenue_by_year_b",
+        "catalog_revenue_by_year_c"
+      ]
+    },
+    {
+      "scenario_id": "low_card_scope__store_revenue_by_year",
+      "family": "low_card_scope",
+      "base": "store_revenue_by_year",
+      "base_description": "store net paid by calendar year",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": true,
+      "known_gap_without_profiles": true,
+      "rationale": "weekend revenue is the same revenue asked about weekends; d_weekend has 2 values. Stage 4b's low-cardinality rule treats any single observation on a column with 12 or fewer distinct values as candidate-defining, so this is an expected over-flag. The rule was written for real status columns; TPC-DS has few of those.",
+      "query_ids": [
+        "store_revenue_by_year_a",
+        "store_revenue_by_year_b",
+        "store_revenue_by_year_c"
+      ]
+    },
+    {
+      "scenario_id": "low_card_scope__avg_store_price_by_category",
+      "family": "low_card_scope",
+      "base": "avg_store_price_by_category",
+      "base_description": "average store sales price by item category",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": true,
+      "known_gap_without_profiles": true,
+      "rationale": "restricting to one category is scope; i_category has 10 values. Stage 4b's low-cardinality rule treats any single observation on a column with 12 or fewer distinct values as candidate-defining, so this is an expected over-flag. The rule was written for real status columns; TPC-DS has few of those.",
+      "query_ids": [
+        "avg_store_price_by_category_a",
+        "avg_store_price_by_category_b",
+        "avg_store_price_by_category_c"
+      ]
+    },
+    {
+      "scenario_id": "low_card_scope__catalog_quantity_by_quarter",
+      "family": "low_card_scope",
+      "base": "catalog_quantity_by_quarter",
+      "base_description": "catalog quantity by quarter of year",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": true,
+      "known_gap_without_profiles": true,
+      "rationale": "one quarter is scope; d_qoy has 4 values. Stage 4b's low-cardinality rule treats any single observation on a column with 12 or fewer distinct values as candidate-defining, so this is an expected over-flag. The rule was written for real status columns; TPC-DS has few of those.",
+      "query_ids": [
+        "catalog_quantity_by_quarter_a",
+        "catalog_quantity_by_quarter_b",
+        "catalog_quantity_by_quarter_c"
+      ]
+    },
+    {
+      "scenario_id": "recurring_scope__store_revenue_by_year",
+      "family": "recurring_scope",
+      "base": "store_revenue_by_year",
+      "base_description": "store net paid by calendar year",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": true,
+      "known_gap_without_profiles": true,
+      "rationale": "two analysts asked about 2001; the measure's definition did not change. Stage 4b's recurrence rule makes any predicate seen twice candidate-defining, so a popular scope becomes a rival definition: an expected over-flag and the clearest case for materiality ranking or rationale-learned rules over recurrence alone.",
+      "query_ids": [
+        "store_revenue_by_year_a",
+        "store_revenue_by_year_b",
+        "store_revenue_by_year_c",
+        "store_revenue_by_year_d"
+      ]
+    },
+    {
+      "scenario_id": "recurring_scope__catalog_revenue_by_year",
+      "family": "recurring_scope",
+      "base": "catalog_revenue_by_year",
+      "base_description": "catalog net paid by calendar year",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": true,
+      "known_gap_without_profiles": true,
+      "rationale": "same, catalog channel. Stage 4b's recurrence rule makes any predicate seen twice candidate-defining, so a popular scope becomes a rival definition: an expected over-flag and the clearest case for materiality ranking or rationale-learned rules over recurrence alone.",
+      "query_ids": [
+        "catalog_revenue_by_year_a",
+        "catalog_revenue_by_year_b",
+        "catalog_revenue_by_year_c",
+        "catalog_revenue_by_year_d"
+      ]
+    },
+    {
+      "scenario_id": "high_card_scope__store_revenue_by_year",
+      "family": "high_card_scope",
+      "base": "store_revenue_by_year",
+      "base_description": "store net paid by calendar year",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": false,
+      "known_gap_without_profiles": true,
+      "rationale": "one year out of 201; scope, not definition. With profiles Stage 4b sees high cardinality and no recurrence and correctly treats it as narrowing. Without profiles it has no evidence and flags it, which is the conservative path documented in conflicts.py.",
+      "query_ids": [
+        "store_revenue_by_year_a",
+        "store_revenue_by_year_b",
+        "store_revenue_by_year_c"
+      ]
+    },
+    {
+      "scenario_id": "high_card_scope__store_profit_by_year_category",
+      "family": "high_card_scope",
+      "base": "store_profit_by_year_category",
+      "base_description": "store net profit by year and item category",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": false,
+      "known_gap_without_profiles": true,
+      "rationale": "one manufacturer out of 130; scope, not definition. With profiles Stage 4b sees high cardinality and no recurrence and correctly treats it as narrowing. Without profiles it has no evidence and flags it, which is the conservative path documented in conflicts.py.",
+      "query_ids": [
+        "store_profit_by_year_category_a",
+        "store_profit_by_year_category_b",
+        "store_profit_by_year_category_c"
+      ]
+    },
+    {
+      "scenario_id": "high_card_scope__store_sales_by_customer_state",
+      "family": "high_card_scope",
+      "base": "store_sales_by_customer_state",
+      "base_description": "store extended sales price by customer state",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": false,
+      "known_gap_without_profiles": true,
+      "rationale": "one state out of 49; scope, not definition. With profiles Stage 4b sees high cardinality and no recurrence and correctly treats it as narrowing. Without profiles it has no evidence and flags it, which is the conservative path documented in conflicts.py.",
+      "query_ids": [
+        "store_sales_by_customer_state_a",
+        "store_sales_by_customer_state_b",
+        "store_sales_by_customer_state_c"
+      ]
+    },
+    {
+      "scenario_id": "high_card_scope__web_sales_by_year_month",
+      "family": "high_card_scope",
+      "base": "web_sales_by_year_month",
+      "base_description": "web extended sales price by year and month",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": false,
+      "known_gap_without_profiles": true,
+      "rationale": "a threshold on a continuous column, observed once; scope, not definition. With profiles Stage 4b sees high cardinality and no recurrence and correctly treats it as narrowing. Without profiles it has no evidence and flags it, which is the conservative path documented in conflicts.py.",
+      "query_ids": [
+        "web_sales_by_year_month_a",
+        "web_sales_by_year_month_b",
+        "web_sales_by_year_month_c"
+      ]
+    },
+    {
+      "scenario_id": "grain_variation__store_revenue_by_year",
+      "family": "grain_variation",
+      "base": "store_revenue_by_year",
+      "base_description": "store net paid by calendar year",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "A finer grain is another realization of the same measure, not a competing definition.",
+      "query_ids": [
+        "store_revenue_by_year_a",
+        "store_revenue_by_year_b",
+        "store_revenue_by_year_c"
+      ]
+    },
+    {
+      "scenario_id": "grain_variation__catalog_revenue_by_year",
+      "family": "grain_variation",
+      "base": "catalog_revenue_by_year",
+      "base_description": "catalog net paid by calendar year",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "A finer grain is another realization of the same measure, not a competing definition.",
+      "query_ids": [
+        "catalog_revenue_by_year_a",
+        "catalog_revenue_by_year_b",
+        "catalog_revenue_by_year_c"
+      ]
+    },
+    {
+      "scenario_id": "grain_variation__avg_store_price_by_category",
+      "family": "grain_variation",
+      "base": "avg_store_price_by_category",
+      "base_description": "average store sales price by item category",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "A finer grain is another realization of the same measure, not a competing definition.",
+      "query_ids": [
+        "avg_store_price_by_category_a",
+        "avg_store_price_by_category_b",
+        "avg_store_price_by_category_c"
+      ]
+    },
+    {
+      "scenario_id": "cosmetic__store_revenue_by_year",
+      "family": "cosmetic",
+      "base": "store_revenue_by_year",
+      "base_description": "store net paid by calendar year",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "Aliases, ORDER BY, select order, and INNER JOIN wording change nothing about the definition.",
+      "query_ids": [
+        "store_revenue_by_year_a",
+        "store_revenue_by_year_b",
+        "store_revenue_by_year_c"
+      ]
+    },
+    {
+      "scenario_id": "cosmetic__web_sales_by_year_month",
+      "family": "cosmetic",
+      "base": "web_sales_by_year_month",
+      "base_description": "web extended sales price by year and month",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "Aliases, ORDER BY, select order, and INNER JOIN wording change nothing about the definition.",
+      "query_ids": [
+        "web_sales_by_year_month_a",
+        "web_sales_by_year_month_b",
+        "web_sales_by_year_month_c"
+      ]
+    },
+    {
+      "scenario_id": "different_measure__store_revenue_by_year",
+      "family": "different_measure",
+      "base": "store_revenue_by_year",
+      "base_description": "store net paid by calendar year",
+      "expect_conflict": false,
+      "expect_conflict_without_profiles": false,
+      "known_gap": false,
+      "known_gap_without_profiles": false,
+      "rationale": "Net profit and net paid are different measures; nothing to arbitrate between them.",
+      "query_ids": [
+        "store_revenue_by_year_a",
+        "store_revenue_by_year_b",
+        "store_revenue_by_year_c"
+      ]
+    }
+  ]
+}

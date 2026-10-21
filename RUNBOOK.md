@@ -32,7 +32,7 @@ py -3.11 -m venv .venv
 Expected result currently:
 
 ```text
-129 passed
+132 passed
 ```
 
 This path makes no network requests and does not require an API key.
@@ -529,23 +529,34 @@ This induces all 24 datasets, measures, and relationships from the 99 raw TPC-DS
 
 Offline and deterministic -- no API key, no live model. Measures whether
 Stage 4b's conflict detection correctly separates a genuine definitional
-disagreement from benign grain variation, against a small set of
-hand-authored TPC-DS query pairs with known ground truth (see
+disagreement from benign scope or grain variation (see
 `docs/ARCHITECTURE.md`'s Tier 4 section):
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\run_tier4.py
+.\.venv\Scripts\python.exe scripts\run_tier4.py --set generated --verbose
 ```
 
-Prints PASS/FAIL per scenario plus precision, recall, and noise rate. Exits
-non-zero if any scenario is misclassified. Defaults to
-`data\tpcds\tpcds.duckdb` for profile evidence (sharpens the low-cardinality
-check) if that file exists, and runs without it otherwise; pass
-`--database` to point at a different one.
+Two scenario sets run. The three handcrafted pairs in
+`data/tpcds/tier4/queries/` all pass. The 23 generated scenarios in
+`data/tpcds/tier4/generated/` (written by `scripts/build_tier4_corpus.py`,
+rerunnable, byte-identical) are labelled by meaning, and the classifier
+scores 55% precision and 75% recall against them with profiles, 47% and
+100% without. Every miss is a documented `known_gap` in the manifest with
+its reason; the script prints `GAP` for those, `FAIL` for anything
+undocumented, and exits non-zero only on the latter. It also lists any
+documented gap that unexpectedly passes so the manifest gets corrected.
+
+Defaults to `data\tpcds\tpcds.duckdb` for profile evidence if that file
+exists (it is what lets the classifier tell a one-off scope filter on a
+high-cardinality column from a definitional one) and runs without it
+otherwise, switching to the no-profile labels; pass `--database` to point at
+a different one.
 
 The same scenarios run in the offline test suite (`pytest`, section 2) as
-`test_tier4.py`, so a regression here is caught before it reaches this
-script.
+`test_tier4.py`, which pins the confusion matrix in both modes, so a change
+in classifier behaviour is caught before it reaches this script or the
+paper.
 
 ## 19. Run Tier 3 against the fulfillment demo (demo/calibration unification)
 

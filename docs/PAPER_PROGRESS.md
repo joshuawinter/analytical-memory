@@ -12,7 +12,7 @@ Tier 3 is optional calibration, prepared but not run.
 | Step | State | Notes |
 |---|---|---|
 | 1. Tier 5 harness (rulings outrank frequency) | **done** | 4/4 scenarios pass, both counters zero; `scripts/run_tier5.py` |
-| 2. Tier 4 expansion to a reportable set | not started | 3 scenarios today |
+| 2. Tier 4 expansion to a reportable set | **done** | 23 generated + 3 handcrafted; precision 55%, recall 75% with profiles |
 | 3. Verify cited prior-art rows | not started | only rows the paper cites |
 | 4. License + README, clean-clone runnable | not started | default Apache-2.0 |
 | 5. Draft technical report | not started | `docs/PAPER.md` |
@@ -31,6 +31,15 @@ Tier 3 is optional calibration, prepared but not run.
 - **Tier 3 is cheap.** A dry run prices the full TPC-H three-arm run at
   cents on every current model. If Josh wants it in an appendix, cost is
   not the objection; the objection remains that it measures part B.
+- **Tier 4 does not meet its own goal yet.** On 23 semantically labelled
+  scenarios the conflict classifier scores 55% precision, 75% recall with
+  profiles. It over-flags scope filters that recur or sit on low-cardinality
+  columns (5 of 15 negatives) and misses a definitional filter seen once (2
+  of 8 positives). "Precision over recall" is stated in the architecture
+  and not achieved by structural heuristics. The paper should report this
+  and argue for execution-backed materiality: a scope filter changes the
+  population, a definitional filter changes the number for the same
+  population, and only execution can tell them apart.
 
 ## Decisions pending from Josh
 
@@ -51,3 +60,6 @@ API ledger: $0.00 (no live call has ever been made). Check with
 - 2026-10-21: Tier 3 prepared. Dry-run mode records and prices every call
   without a key; exact counts available via count_tokens when a key is set.
   Suite at 129 tests. Next: Tier 4 expansion.
+- 2026-10-21: Tier 4 expanded to 26 scenarios with semantic labels. Result
+  is an honest 55%/75%, all misses documented and pinned in tests. Next:
+  prior-art verification for cited rows.
