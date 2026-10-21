@@ -13,7 +13,7 @@ Tier 3 is optional calibration, prepared but not run.
 |---|---|---|
 | 1. Tier 5 harness (rulings outrank frequency) | **done** | 4/4 scenarios pass, both counters zero; `scripts/run_tier5.py` |
 | 2. Tier 4 expansion to a reportable set | **done** | 23 generated + 3 handcrafted; precision 55%, recall 75% with profiles |
-| 3. Verify cited prior-art rows | not started | only rows the paper cites |
+| 3. Verify cited prior-art rows | **done** | 10 sources verified (SRC-035 to SRC-044); Airbnb, LinkedIn, Gartner unreachable, dropped from citations |
 | 4. License + README, clean-clone runnable | not started | default Apache-2.0 |
 | 5. Draft technical report | not started | `docs/PAPER.md` |
 | Tier 3 preparation (not execution) | **done** | `--dry-run` on both scripts; client installed (anthropic 2.0.0); ~$0.06 typical for the full TPC-H run on sonnet-4-5 |
@@ -63,3 +63,9 @@ API ledger: $0.00 (no live call has ever been made). Check with
 - 2026-10-21: Tier 4 expanded to 26 scenarios with semantic labels. Result
   is an honest 55%/75%, all misses documented and pinned in tests. Next:
   prior-art verification for cited rows.
+- 2026-10-21: Prior art for the paper verified. Sequeda's 16% to 54% is
+  exact. BIRD, Spider 2.0, BEAVER verified with their headline numbers.
+  Uber's uMetric post gives the concrete "6.53M vs 6.20M" case. SnipSuggest
+  corrected to 2010. Airbnb Minerva (Medium 403), LinkedIn UMP (404), and
+  Gartner (paywall) could not be reached and are not cited. Next: license
+  and README.

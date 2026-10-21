@@ -1,11 +1,15 @@
 # Prior Art: Has Anyone Looked Into This Before?
 
-Status: **PARTIALLY VERIFIED, 2026-10-12.** Section 0 is verified against
-primary vendor documentation and carries `SRC-NNN` IDs. Sections 1, 2, and 4
-and the remaining rows of section 3 are from model recall, not from fetched
-sources. Treat those as a verification queue, not as evidence. Nothing in
-them gets an `SRC-NNN` ID or gets cited in ARCHITECTURE.md or the deck until
-a URL, venue, and date have been confirmed. Provisional IDs are `PA-NN`.
+Status: **PARTIALLY VERIFIED, 2026-10-21.** Section 0 is verified against
+primary vendor documentation and carries `SRC-NNN` IDs. On 2026-10-21 the
+rows the paper cites were verified against arXiv, Crossref, or the
+publisher: PA-01, PA-04, PA-07, PA-14, PA-15, PA-20, PA-21 (BIRD, Spider 2.0,
+BEAVER), and PA-26 (Uber only). Those rows now carry `SRC-035` to `SRC-044`
+and are in [README.md](README.md). Everything else in sections 1, 2, and 4
+remains model recall: a verification queue, not evidence. Nothing cited in
+ARCHITECTURE.md, the deck, or the paper may come from an unverified row.
+Provisional IDs are `PA-NN`. Sources that could not be reached from this
+network are marked as such rather than deleted.
 
 Related: [competitors](competitors.md), [marketplace](marketplace.md),
 [first principles](first-principles.md),
@@ -117,33 +121,33 @@ academic sources. Those rows below remain unverified.
 
 | ID | Work (recalled) | Part | What it did | What it did not do | Status |
 |---|---|---|---|---|---|
-| PA-01 | Elmeleegy, Ouzzani, Elmagarmid, *Usage-Based Schema Matching*, ICDE 2008 | A | Used query logs (which columns are joined, compared, co-occur) as evidence for schema matching. Direct ancestor of "the corpus is labelled assertions." | Matching only. No metric induction, no conflicts, no human loop. | unverified |
+| PA-01 | Elmeleegy, Ouzzani, Elmagarmid, *Usage-Based Schema Matching*, ICDE 2008 | A | Used query logs (which columns are joined, compared, co-occur) as evidence for schema matching. Direct ancestor of "the corpus is labelled assertions." | Matching only. No metric induction, no conflicts, no human loop. | **verified 2026-10-21, [SRC-040]** |
 | PA-02 | Jain, Moritz, Halperin, Howe, Lazowska, *SQLShare: Results from a Multi-Year SQL-as-a-Service Experiment*, SIGMOD 2016 | A | Empirical study of real analyst SQL; what people actually write versus benchmark assumptions. | Descriptive study, no induction. | unverified |
 | PA-03 | Jain, Yan, Cruanes, Howe, *Query2Vec*, arXiv 2018 | A/B | Embeddings over SQL workloads for workload summarisation and similarity. Precedent for treating the workload as a corpus. | No semantic layer output, no validation. | unverified |
-| PA-04 | Khoussainova, Kwon, Balazinska, Suciu, *SnipSuggest*, VLDB 2011 | A | Mined query logs to recommend SQL fragments (joins, predicates) by co-occurrence. Closest pre-LLM precedent for "which filters travel together." | Autocomplete, not governance. | unverified |
+| PA-04 | Khoussainova, Kwon, Balazinska, Suciu, *SnipSuggest*, PVLDB 2010 | A | Mined query logs to recommend SQL fragments (joins, predicates) by co-occurrence. Closest pre-LLM precedent for "which filters travel together." | Autocomplete, not governance. | **verified 2026-10-21, [SRC-044]; year corrected from 2011 to 2010** |
 | PA-05 | Yang, Procopiuc, Srivastava, *Summarizing Relational Databases*, VLDB 2009 | B | Schema summarisation weighted by query-log usage; which tables matter. | Importance ranking, not definitions. | unverified |
 | PA-06 | Golfarelli, Rizzi et al., OLAP query-log mining and session similarity, 2011-2014 | A/B | Mined OLAP logs for user preferences and recurring analytical patterns. Grain and dimension precedent. | Recommendation focus. | unverified |
-| PA-07 | Halevy, Korn, Noy, Olston, Polyzotis, Roy, Whang, *Goods: Organizing Google's Datasets*, SIGMOD 2016 | A/B | Post-hoc inference of dataset metadata, provenance, and schema from logs and content at Google scale, with no authoring step. Canonical "nobody wrote it down, recover it anyway" paper. | Dataset-level metadata, not metric semantics. No normative layer. | unverified |
+| PA-07 | Halevy, Korn, Noy, Olston, Polyzotis, Roy, Whang, *Goods: Organizing Google's Datasets*, SIGMOD 2016 | A/B | Post-hoc inference of dataset metadata, provenance, and schema from logs and content at Google scale, with no authoring step. Canonical "nobody wrote it down, recover it anyway" paper. | Dataset-level metadata, not metric semantics. No normative layer. | **verified 2026-10-21, [SRC-041]** |
 | PA-08 | Taheriyan, Knoblock, Szekely, Ambite, *Learning the Semantics of Structured Data Sources* (Karma), JWS 2016 and ISWC prior | B | Learned semantic models of new sources from previously modelled ones. Induction of semantics, human-corrected. | Ontology mapping, not SQL usage; no conflicts. | unverified |
 | PA-09 | Hainaut et al., database reverse engineering / DB-MAIN, 1990s-2000s; Premerlani & Blaha, CACM 1994 | A/B | Recover conceptual schema from physical schema plus program code. Treats code as encoding intent. Foundation for "stored procedures are part of the corpus." | Structural, not analytical semantics. | unverified |
 | PA-10 | Sneed, *Extracting Business Logic from Existing COBOL Programs*, IWPC 2001; Huang et al., *Business Rule Extraction from Legacy Code*, COMPSAC 1996 | A | Business-rule extraction from legacy code. The code-side version of the premise. | Migration-oriented, no governance artefact. | unverified |
 | PA-11 | Rostin et al., *A Machine Learning Approach to Foreign Key Discovery*, WebDB 2009; Zhang et al., *On Multi-Column Foreign Key Discovery*, VLDB 2010 | B | Join-path discovery from data. Complements join discovery from usage. | Data-driven, not usage-driven. | unverified |
 | PA-12 | Sherlock (KDD 2019), Sato (VLDB 2020), DODUO (SIGMOD 2022) | B | Semantic column-type detection from content. | Content signal only, no usage, no metrics. | unverified |
 | PA-13 | Spanos, Stavrou, Mitrou, *Bringing Relational Databases into the Semantic Web: A Survey*, SWJ 2012; Sequeda, Arenas, Miranker, WWW 2012 | B | Ontology learning and direct mapping from relational schemas. | Schema-only; usage ignored. | unverified |
-| PA-14 | van der Aalst, *Process Mining*; Rozinat & van der Aalst, conformance checking, 2008 | C analog | Discover the real process from event logs, then check conformance against the normative model. Structurally the same descriptive-vs-normative split as Stage 4c. | Different object (processes, not metrics). Cite as analogy only. | unverified |
-| PA-15 | Halevy, Norvig, Pereira, *The Unreasonable Effectiveness of Data*, IEEE Intelligent Systems 2009 | A | Canonical citation for "meaning is recoverable from enough usage." Supports the Premise section's distributional-semantics analogy. | Not about enterprises. | unverified |
+| PA-14 | Rozinat & van der Aalst, *Conformance checking of processes based on monitoring real behavior*, Information Systems 2008 (van der Aalst, *Process Mining*, for the field) | C analog | Discover the real process from event logs, then check conformance against the normative model. Structurally the same descriptive-vs-normative split as Stage 4c. | Different object (processes, not metrics). Cite as analogy only. | **verified 2026-10-21, [SRC-043]** |
+| PA-15 | Halevy, Norvig, Pereira, *The Unreasonable Effectiveness of Data*, IEEE Intelligent Systems 2009 | A | Canonical citation for "meaning is recoverable from enough usage." Supports the Premise section's distributional-semantics analogy. | Not about enterprises. | **verified 2026-10-21, [SRC-042]** |
 
 ## 2. LLM-era academic and industrial research
 
 | ID | Work (recalled) | Part | What it did | Gap vs thesis | Status |
 |---|---|---|---|---|---|
-| PA-20 | Sequeda, Allemang, Jacob, *A Benchmark to Understand the Role of Knowledge Graphs on LLM Accuracy for Enterprise SQL Questions*, arXiv 2311.07509, 2023 | E | Measured text-to-SQL accuracy with and without an ontology/knowledge graph over an insurance schema. Reported a large lift (recalled as roughly 16% to 54%). **The closest published version of the Tier 3 experiment.** | Ontology was hand-authored, not induced. No conflicts, no ruling store. | unverified, numbers especially |
-| PA-21 | Spider 2.0 (Lei et al., ICLR 2025); BIRD (Li et al., NeurIPS 2023); BEAVER (MIT, enterprise text-to-SQL, arXiv 2024); KaggleDBQA (ACL 2021) | E | Benchmarks. BEAVER specifically argues enterprise schemas defeat schema-only text-to-SQL. BIRD introduced "external knowledge" as a required input. | None induce the knowledge; they supply it. The project should report Tier 3 on at least one of these. | unverified |
+| PA-20 | Sequeda, Allemang, Jacob, *A Benchmark to Understand the Role of Knowledge Graphs on LLM Accuracy for Enterprise SQL Questions*, arXiv 2311.07509, 2023 | E | Measured GPT-4 zero-shot text-to-SQL accuracy with and without an ontology/knowledge graph over an insurance schema: **16% on the raw database, 54% over the knowledge graph**. The closest published version of the Tier 3 experiment. | Ontology was hand-authored, not induced. No conflicts, no ruling store. | **verified 2026-10-21, numbers exact, [SRC-035]** |
+| PA-21 | BIRD (Li et al., NeurIPS 2023, arXiv 2305.03111); Spider 2.0 (Lei et al., ICLR 2025 oral, arXiv 2411.07763); BEAVER (Chen et al., arXiv 2409.02038, v3 2026); KaggleDBQA (ACL 2021) | E | Benchmarks. BIRD names "external knowledge between NL questions and database contents" as a challenge (best model 40.08% vs human 92.96%). Spider 2.0: enterprise workflows, 21.3% solved vs 91.2% on Spider 1.0. BEAVER: private warehouses, 10.8% with GPT-5.2, 30.1% with oracle sub-task hints, so the bottleneck is domain knowledge. | None induce the knowledge; they supply it. | **BIRD, Spider 2.0, BEAVER verified 2026-10-21 [SRC-036], [SRC-037], [SRC-038]; KaggleDBQA unverified** |
 | PA-22 | Uber QueryGPT engineering blog, 2024 | B | Text-to-SQL with curated "workspaces" and sample SQL as context. | Curation by humans, not induction. | unverified |
 | PA-23 | Pinterest text-to-SQL engineering blog, 2024 | A/B | Used historical query logs to select tables and summarise them for the model. Closest big-tech example of usage-as-context. | Table selection only; no metric definitions, no governance. | unverified |
 | PA-24 | TAG / LOTUS semantic operators (Berkeley, 2024) | adjacent | LLM operators over tables. | Not about semantics recovery. Low priority. | unverified |
 | PA-25 | LLM business-rule extraction from COBOL / stored procedures, multiple arXiv 2024-2026; IBM watsonx Code Assistant for Z | A | Code-side extraction of business logic with LLMs. | Migration framing; output is documentation, not governed memory. | unverified |
-| PA-26 | Airbnb Minerva (2021), Uber uMetric (2021), LinkedIn Unified Metrics Platform (2019) blog series | C | Each was motivated by the same disease: the same named metric computed differently across teams. All three cured it by authoring a certified metric store. | **They solved C by fiat, not by detection.** Nobody published the "discover the conflicts from usage" step. Strong framing material for Slide 3. | unverified |
+| PA-26 | Uber uMetric, *The Journey Towards Metric Standardization* (2021-01-12); Airbnb Minerva (2021); LinkedIn Unified Metrics Platform (2019) blog series | C | Each was motivated by the same disease: the same named metric computed differently across teams. Uber: "multiple versions of metrics defined or generated in different channels for the same business logic"; "Shopping Session" showed 6.53M in one tool and 6.20M in another for the same city and period, traced to outdated filters. All three cured it by authoring a certified metric store. | **They solved C by fiat, not by detection.** Nobody published the "discover the conflicts from usage" step. Strong framing material for Slide 3 and the paper. | **Uber verified 2026-10-21, [SRC-039]. Airbnb (Medium returned 403) and LinkedIn (URL now 404) not reached from this network; cite Uber only** |
 
 ## 3. Vendors and products (highest priority to verify)
 
