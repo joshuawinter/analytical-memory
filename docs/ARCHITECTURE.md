@@ -94,7 +94,12 @@ The first MVP is deliberately local-first. Deterministic generation, DuckDB,
 profiling, SQL compilation, validation, labeling, and investigation execution
 should not require an external model call. Target API spend for the first
 meaningful experiment is `$5–$15`, with a preferred ceiling of `$25`; do not
-expand toward `$100+` without reviewing results and value first.
+expand toward `$100+` without reviewing results and value first. Since
+2026-10-21 those limits are enforced, not just stated: every live call goes
+through `spend.py`'s metered client, which replays identical requests from a
+content-addressed cache, appends each call to an append-only ledger with
+list-price cost, warns at the ceiling, and refuses at the hard stop
+(RUNBOOK section 14).
 
 Use the local CUDA/GPU environment only where it reduces cost or materially
 improves the experiment: embeddings, retrieval/reranking, batch paraphrase
@@ -684,10 +689,17 @@ def tier3(layer, business_questions, reference_answers):
 ```
 
 Report `match_rate`. Then run the control arm: same questions, same model, raw
-schema only, no induced layer. **The delta between the two is your entire
-finding.** Published baselines put raw-schema text-to-SQL around 50–70% on messy
+schema only, no induced layer. The delta between the two is the induction
+finding. Published baselines put raw-schema text-to-SQL around 50–70% on messy
 enterprise data and 86–95% with a curated layer. If induction lands in the upper
-band, the thesis holds.
+band, the feeder is worth keeping.
+
+Before the 2026-10-13 pivot this delta was the thesis. It no longer is.
+Induction from query history is a shipped platform feature (prior art section
+0), so the paper and the pilot take "a usable induced layer exists" as a
+premise and measure what the platforms do not do: Tier 4 (conflicts) and
+Tier 5 (rulings outrank frequency), both offline. Tier 3 is the only harness
+that needs a live model, and nothing downstream depends on its number.
 
 The implementation splits this into a validated boundary: `plan.py`'s
 `MetricPlan`/`resolve_plan` are what the induced-layer arm actually composes
@@ -985,6 +997,73 @@ harness and formula work end to end and locks in the current classification
 behavior as a regression guard. Expanding it (more scenarios, perturbing
 real TPC-DS templates directly rather than hand-authored pairs) is the
 natural next step before trusting precision/recall numbers at any scale.
+
+**Tier 5 — Rulings outrank frequency.** Added 2026-10-21. This is the
+central claim of the pivot (Stage 4c: "Ruling is durable and overrides
+frequency") and the one no verified vendor makes. It has never been tested
+as a claim; today it is only asserted by construction, because
+`investigate()` answers from `APPROVE`d definitions and nothing else. Tier 5
+tests it adversarially and offline, with no model call.
+
+Construct a corpus where the majority is wrong. Take a measure with one
+dominant signature (high support, say 30 of 34 queries) and one minority
+signature (low support, 4 of 34) that differ by an invariant predicate, so
+4b classifies the pair as `DEFINITIONAL`. Author a hidden truth that says
+the minority is correct -- the realistic case where most analysts copied a
+stale definition. Then run four scenarios:
+
+1. **No ruling.** The question must come back `NEEDS_REVIEW` with the fork
+   exposed. A silent answer from the majority signature is a failure, and
+   the most important one: it is exactly what frequency-ranked platform
+   induction does.
+2. **Ruling for the minority.** `APPROVE` the minority definition and
+   `REJECT` the majority one through `LabelingStore.label()`, each with
+   rationale, so both land in `MemoryStore` and the audit ledger. The
+   question must now compile and execute the minority definition and match
+   the hidden truth by result equality (the Tier 3 comparator, no LLM arm).
+   Retrieval must never surface the majority signature as answerable.
+3. **Point in time.** Ask the same question as of a timestamp before the
+   approval's `valid_from`. The answer must revert to scenario 1, not
+   scenario 2. `Resolution` carries `valid_from` and `valid_to`, but
+   `investigate()` reads only `decision` and ignores both; that is the first
+   gap Tier 5 will find.
+4. **Superseding ruling.** A later `Resolution` on the same definition
+   reverses the first. The new answer wins after its `valid_from`; the old
+   answer is still reproducible before it; `MemoryStore.verify()` passes and
+   both versions remain readable from `objects/`. Today
+   `memory.resolutions` is a dict keyed by definition, so the second
+   decision overwrites the first in the projection and only the ledger
+   keeps history. Tier 5 should make the investigation path read the
+   ledger-backed history, not the head.
+
+There are two ruling stores in the code and Tier 5 has to name that.
+`ResolutionStore` (Stage 4c) holds conflict-level `Ruling` records with
+`chosen`, `supersedes`, and an `as_of` resolver, but nothing on the
+investigation path reads it. `LabelingStore` holds per-definition
+`Resolution` records, and that is what `investigate()` consults. The 4c
+design (rule on the conflict, not on each definition) is the right one; the
+labeling path is what shipped. Tier 5 is the forcing function to converge
+them, and until they converge the section above tests the path that
+actually answers questions.
+
+Report pass/fail per scenario plus two counts: how many times the system
+answered from frequency when a ruling existed (must be zero), and how many
+times it answered at all when no ruling existed and the pair was contested
+(must be zero). Precision-over-recall applies here too: a wrong silent
+answer costs more than an unnecessary `NEEDS_REVIEW`.
+
+Implementation shape, mirroring Tier 4: `tier5.py` with a `Tier5Scenario`
+dataclass and `run_tier5`, fixtures under `data/tpcds/tier5/`, a
+`scripts/run_tier5.py` entry point, and `test_tier5.py` in the main suite so
+it runs with `pytest` and needs no credentials. The hidden truth is
+independently authored SQL, as in Tier 3, never reused from the corpus.
+
+Together Tier 4 and Tier 5 are the evidentiary base for the paper. Tier 4
+shows the system can tell a definitional conflict from grain noise. Tier 5
+shows that once a human rules, the ruling is what the agent gets, with the
+evidence and rationale attached, at the right point in time. What neither
+shows, and the paper should say so, is a downstream lift in answer
+correctness; that needs real usage and is named as future work.
 
 ### The production metric
 

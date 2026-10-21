@@ -33,6 +33,7 @@ from semantic_induction.memory import (
 from semantic_induction.naming import AnthropicNamingProvider, name_metric_definition
 from semantic_induction.profile import profile_database
 from semantic_induction.services import InvestigationService, investigation_payload
+from semantic_induction.spend import open_ledger
 
 
 def _label(column: str) -> str:
@@ -66,6 +67,7 @@ def _apply_llm_naming(memory: AnalyticalMemory, sql_by_id: dict[str, str], catal
         concept = memory.concepts.get(definition.concept_id)
         if concept:
             memory.concepts[concept.concept_id] = replace(concept, preferred_label=named.name)
+    print(open_ledger().summary().render(), file=sys.stderr)
 
 
 def build_store(

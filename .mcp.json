@@ -1,9 +1,9 @@
 {
   "mcpServers": {
     "analytical-memory": {
-      "command": "C:\\Users\\jwp\\analytical-memory\\.venv\\Scripts\\python.exe",
+      "command": "C:\\Users\\jwp\\projects\\analytical-memory\\.venv\\Scripts\\python.exe",
       "args": [
-        "C:\\Users\\jwp\\analytical-memory\\scripts\\mcp_server.py",
+        "C:\\Users\\jwp\\projects\\analytical-memory\\scripts\\mcp_server.py",
         "--domain",
         "fulfillment"
       ]

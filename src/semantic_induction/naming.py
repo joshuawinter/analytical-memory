@@ -39,21 +39,12 @@ class AnthropicNamingProvider:
     ):
         self.config = config or EnvironmentNamingConfig()
         if client is None:
-            if not self.config.api_key:
-                raise RuntimeError(
-                    f"missing API key environment variable: {self.config.api_key_env}"
-                )
-            if not self.config.model:
-                raise RuntimeError(
-                    f"missing model environment variable: {self.config.model_env}"
-                )
-            try:
-                from anthropic import Anthropic
-            except ImportError as error:
-                raise RuntimeError(
-                    "Anthropic provider requires the 'anthropic' optional dependency"
-                ) from error
-            client = Anthropic(api_key=self.config.api_key)
+            # Every real call goes through the spend ledger and response cache
+            # (RUNBOOK section 14). An injected client bypasses both on purpose
+            # so tests and callers that bring their own client are unaffected.
+            from semantic_induction.spend import metered_anthropic_client
+
+            client = metered_anthropic_client(self.config, purpose="naming")
         self.client = client
 
     def name(self, object_id: str, structure: object) -> NamedDefinition:

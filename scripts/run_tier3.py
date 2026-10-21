@@ -45,6 +45,7 @@ from semantic_induction.induce import induce  # noqa: E402
 from semantic_induction.ingest import ingest  # noqa: E402
 from semantic_induction.naming import EnvironmentNamingConfig  # noqa: E402
 from semantic_induction.profile import profile_database  # noqa: E402
+from semantic_induction.spend import open_ledger  # noqa: E402
 from semantic_induction.tier3 import (  # noqa: E402
     AnthropicPlanComposer,
     AnthropicSqlComposer,
@@ -226,6 +227,8 @@ def main() -> int:
     print(f"raw schema match rate:    {report.match_rate(RAW_SCHEMA):.0%}")
     print(f"induced layer match rate: {report.match_rate(INDUCED_LAYER):.0%}")
     print(f"delta (induced - raw):    {report.delta():+.0%}")
+    print()
+    print(open_ledger().summary().render())
     return 0
 
 

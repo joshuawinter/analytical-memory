@@ -244,17 +244,11 @@ class MockPlanComposer:
 
 
 def _anthropic_client(config: EnvironmentNamingConfig) -> Any:
-    if not config.api_key:
-        raise RuntimeError(f"missing API key environment variable: {config.api_key_env}")
-    if not config.model:
-        raise RuntimeError(f"missing model environment variable: {config.model_env}")
-    try:
-        from anthropic import Anthropic
-    except ImportError as error:
-        raise RuntimeError(
-            "Tier 3 Anthropic composers require the 'anthropic' optional dependency"
-        ) from error
-    return Anthropic(api_key=config.api_key)
+    # Routed through the spend ledger and response cache (RUNBOOK section 14),
+    # so a rerun of the same questions against the same layer costs nothing.
+    from semantic_induction.spend import metered_anthropic_client
+
+    return metered_anthropic_client(config, purpose="tier3", component="Tier 3 Anthropic composers")
 
 
 def _parse_json_object(text: str) -> dict[str, object]:

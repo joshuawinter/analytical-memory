@@ -3,7 +3,7 @@
 Run these commands from the repository root:
 
 ```powershell
-Set-Location C:\Users\jwp\analytical-memory
+Set-Location C:\Users\jwp\projects\analytical-memory
 ```
 
 ## 1. Check the local environment
@@ -32,7 +32,7 @@ py -3.11 -m venv .venv
 Expected result currently:
 
 ```text
-95 passed
+117 passed
 ```
 
 This path makes no network requests and does not require an API key.
@@ -139,18 +139,26 @@ Expected output includes:
 tables=24 queries=99
 ```
 
-## 10. Tier 3 - the actual demonstration
+## 10. Tier 3 - induction calibration (optional, needs a live model)
 
-Everything above proves the pipeline runs. Tier 3 is the experiment that
-proves the premise: it compares match rate for an LLM answering business
-questions from the raw schema alone against an LLM answering from the
-induced layer only, via a validated `MetricPlan` that can never invent a
-join path or filter the corpus didn't demonstrate.
+Tier 3 compares match rate for an LLM answering business questions from the
+raw schema alone against an LLM answering from the induced layer only, via a
+validated `MetricPlan` that can never invent a join path or filter the corpus
+didn't demonstrate.
+
+Since the 2026-10-13 pivot this is a calibration experiment for the induction
+feeder, not the thesis test. Induction from query history is treated as a
+given: Snowflake, Databricks, and Google ship it (see
+`research/prior-art.md` section 0). The claims the project now rests on are
+conflict detection (Tier 4, section 18), rulings that outrank frequency
+(Tier 5, see `docs/ARCHITECTURE.md`), and executable validation (sections 4
+and 13). All of those run offline. Tier 3 is the only harness that needs an
+API key, and nothing in the paper or the pilot depends on its number.
 
 The offline test suite (`pytest`, section 2) already proves the harness
 mechanics work end to end against the real induced TPC-H layer, using
-deterministic mock composers instead of a live model. To get the actual
-number the thesis depends on, run it against Claude:
+deterministic mock composers instead of a live model. To get the live
+number, run it against Claude:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e ".[anthropic]"
@@ -287,10 +295,49 @@ DuckDB execution, labeling, SQL validation, and investigation execution should
 use no API credits. Target API spend is `$5–$15`, with a preferred ceiling of
 `$25`; pause and review before expanding beyond `$100`.
 
+### Spend ledger and response cache
+
+Every live model call in this repo (Stage 5 naming with
+`--naming-provider anthropic`, and the Tier 3 composers in sections 10 and
+19) goes through `semantic_induction.spend`. Two things happen on each call:
+
+- The request is hashed and looked up in `data/spend/cache/`. An identical
+  request is replayed from disk at zero cost, so rerunning Tier 3 or the
+  naming pass on an unchanged corpus makes no API call at all.
+- The call is appended to `data/spend/ledger.jsonl` with model, purpose,
+  token usage, and an estimated cost from first-party list prices (verified
+  against the pricing page on the date recorded in `spend.PRICES_VERIFIED`).
+  Totals are recomputed from the file each time; nothing is stored in place.
+
+The ceiling and hard stop above are enforced from the ledger, not just
+written down. Past `$25` the client warns once and continues. At `$100` it
+refuses to make a live call and tells you to raise the limit on purpose:
+
+```powershell
+$env:SEMANTIC_INDUCTION_SPEND_CEILING_USD = "25"
+$env:SEMANTIC_INDUCTION_SPEND_HARD_STOP_USD = "100"
+$env:SEMANTIC_INDUCTION_SPEND_DIR = "data\spend"   # optional override
+```
+
+See the current tally at any time without a key:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\spend_report.py
+.\.venv\Scripts\python.exe scripts\spend_report.py --entries
+.\.venv\Scripts\python.exe scripts\spend_report.py --json
+```
+
+Exit code is 0 under the ceiling, 1 at or past it, 2 at or past the hard
+stop. The scripts in sections 10, 12, and 19 print the same summary when they
+finish. The estimate is not the bill; the Anthropic Console is. A model
+missing from `spend.PRICES` is still recorded with a null cost and shows up
+as an unpriced call in the summary rather than disappearing.
+
 Use local CUDA/GPU only for embeddings, reranking, batch language generation,
 small-model inference, or synthetic-data generation when it reduces external
 cost or materially improves evaluation. Keep deterministic SQL and profiling
-workloads on the CPU and cache all external prompts and responses.
+workloads on the CPU; the cache above is the "cache all external prompts and
+responses" this section used to ask for and never had.
 
 The focused enterprise-like MVP domain is order-to-cash and fulfillment. Its
 first investigation is:
@@ -403,9 +450,9 @@ To configure in an MCP client (such as Claude Desktop or Cursor), add to `claude
 {
   "mcpServers": {
     "analytical-memory": {
-      "command": "C:\\Users\\jwp\\analytical-memory\\.venv\\Scripts\\python.exe",
+      "command": "C:\\Users\\jwp\\projects\\analytical-memory\\.venv\\Scripts\\python.exe",
       "args": [
-        "C:\\Users\\jwp\\analytical-memory\\scripts\\mcp_server.py",
+        "C:\\Users\\jwp\\projects\\analytical-memory\\scripts\\mcp_server.py",
         "--domain",
         "fulfillment"
       ]
@@ -479,14 +526,16 @@ The same scenarios run in the offline test suite (`pytest`, section 2) as
 `test_tier4.py`, so a regression here is caught before it reaches this
 script.
 
-## 19. Run Tier 3 against the fulfillment demo (demo/thesis unification)
+## 19. Run Tier 3 against the fulfillment demo (demo/calibration unification)
 
-Section 10's Tier 3 proves the thesis (raw-schema vs. induced-layer match
-rate) but only against abstract TPC-H benchmark queries. Section 15's
-fulfillment demo tells a business story (why did OTIF decline?) but never
-shows a raw-schema counterfactual on screen. This runs the same three-arm
-comparison against the fulfillment domain itself, so the demo narrative and
-the thesis proof are the same story instead of two disconnected artifacts.
+Section 10's Tier 3 calibrates the induction feeder (raw-schema vs.
+induced-layer match rate) but only against abstract TPC-H benchmark queries.
+Section 15's fulfillment demo tells a business story (why did OTIF decline?)
+but never shows a raw-schema counterfactual on screen. This runs the same
+three-arm comparison against the fulfillment domain itself, so the demo
+narrative and the calibration result are one story instead of two
+disconnected artifacts. Like section 10, it needs a live model and nothing
+in the paper depends on it.
 
 Requires section 15's `fulfillment.duckdb` to exist first:
 
