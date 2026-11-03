@@ -93,3 +93,17 @@ API ledger: $0.00 (no live call has ever been made). Check with
 - 2026-10-21: Venue decided (repo + post). `docs/POST.md` v0.1 written,
   about 2,000 words, self-contained, inline links only, ready to paste into
   any platform. Awaiting Josh's read of both documents.
+- 2026-11-03: "Why now" argument added to PAPER Section 1 and the README
+  intro: chat interfaces remove the informal SQL review that caught wrong
+  definitions, and better SQL generation leaves meaning as the remaining
+  error (BEAVER, SRC-038). Deck Slide 3 now says "supervised correction
+  loop", since nothing is trained. Accuracy gain from accumulated rulings is
+  stated as a hypothesis, not a result. An EA-facing one-page brief exists
+  as a claude.ai artifact; its message spine is the candidate for every doc.
+- 2026-11-03: ARCHITECTURE gains "Ownership, disclosure and conformance"
+  (design only): lend-never-train principle, exactly what leaves the boundary
+  today, exposure by inference deployment, a disclosure ledger, and
+  conformance checking of the warehouse log against rulings in force, which
+  doubles as the drift re-check. PAPER Section 7 gets both as future work.
+  Conformance cannot ship on structural comparison (Tier 4 precision);
+  execution-backed materiality is its prerequisite.

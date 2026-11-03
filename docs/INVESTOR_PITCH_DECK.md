@@ -99,7 +99,9 @@ them.
 
 **This is a compounding data advantage, not a one-time metadata project.**
 
-The platform is also a management interface for a supervised learning loop:
+The platform is also a management interface for a supervised correction
+loop: people label only the disputed cases, the memory keeps each label with
+its reason, and every later answer reads it. Nothing is retrained.
 
 ```text
 Observe enterprise evidence -> propose interpretation -> validate mechanically

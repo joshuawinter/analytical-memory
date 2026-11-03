@@ -955,6 +955,150 @@ saved alongside it. Only resolutions and vocabulary are written through the
 store today; induced definitions, evidence, and investigations should follow
 so the whole memory is one directory an agent can be pointed at.
 
+### Ownership, disclosure and conformance
+
+Decided 2026-11-03. Design only: nothing in this section is built unless it
+says so.
+
+**Principle.** The memory is the enterprise's institutional memory. The
+proprietary part is not the data, which the warehouse already holds and
+governs; it is the rulings and the reasons behind them: how this company
+decided what its numbers mean. That record stays the enterprise's. Models
+borrow it one question at a time and keep nothing. Every loan is recorded,
+every ruling can be revoked, and what any agent actually did is checked
+against the rulings inside the enterprise's boundary, by code that sends
+nothing out.
+
+Three roles, with different disclosure profiles:
+
+| Role | What happens | Leaves the boundary |
+|---|---|---|
+| Ruling | a named person decides what a measure means, with a reason | nothing |
+| Loan | a model reads the entries relevant to one question | yes: minimal, and to be recorded |
+| Conformance | deterministic code checks observed SQL against the rulings | nothing |
+
+**Lend, never train.** Training transfers knowledge into weights, where it
+cannot be inspected, revoked, or taken back. Context is a loan: the model
+reads the relevant entries for one question and they are gone when the answer
+is. Everything this section promises follows from never training:
+
+- **It lives where the customer puts it.** The memory is the directory and
+  ledger described in "Memory storage format", on storage the customer owns,
+  with the retention lock and customer-managed keys described there. It is
+  not in a model, not in a vendor's per-user memory feature, and not in a
+  platform's semantic-layer format.
+- **Revocation is real.** A redacted ruling cannot reach any future answer.
+  No equivalent exists for weights.
+- **Models are interchangeable; the memory is not.** Changing model provider
+  changes nothing in the record. No vendor can hold it hostage.
+- **Personal without training.** A frontier model knows what "revenue"
+  usually means across its training data. Only the memory knows what it means
+  here, who decided, and why. A general model plus a private memory gives
+  company-specific answers without any company content entering a model.
+
+**What leaves the boundary today.** Precisely:
+
+- **MCP tool responses.** `search_business_memory` returns the memory entries
+  matching a question (definitions, rulings, rationales), not the store.
+  `run_approved_investigation` returns the compiled SQL and the result rows.
+  Both are read by the client's model; where that model runs is the client's
+  deployment, not this service's.
+- **Direct model calls.** The Stage 5 naming pass and Tier 3 send prompts
+  built from the corpus to the Claude API through `MeteredClient`. Both are
+  optional and off by default. The response cache keeps a local copy of every
+  prompt and response.
+- **Nothing else.** Ingest, extraction, induction, conflict detection,
+  compilation, validation, the ledger, and Tiers 4 and 5 run offline.
+
+**The inference deployment sets the exposure; the memory only limits and
+records it.** The memory is inference-agnostic because MCP is the boundary:
+any client works, and the customer chooses its privacy level.
+
+| Inference deployment | Where loaned content goes | Who may retain it |
+|---|---|---|
+| Hosted API, standard terms | the provider | per the provider's terms |
+| Hosted API, zero-retention terms | the provider, transiently | no one, by contract |
+| Private endpoint in the customer's cloud account | the customer's cloud account; the provider operates the model | per the cloud agreement |
+| Open-weight model run by the customer | nowhere | the customer |
+
+Do not claim the design prevents disclosure to a hosted model. It makes the
+disclosure small, specific, visible, and (once the ledger below exists)
+auditable. Prevention is a deployment choice.
+
+**Disclosure ledger (to build).** The spend ledger records what each model
+call cost. Nothing records what each call revealed. Add one append-only,
+hash-chained JSONL file, kept separate from the decision ledger because read
+traffic would swamp it, with one event per disclosure:
+
+```text
+DISCLOSURE  at, actor (SSO identity), client, tool or purpose,
+            memory paths + content_sha256 returned,
+            investigation id, result row count, column names,
+            sha256 of the full payload
+```
+
+It records identities and hashes, never the payload, so the ledger does not
+become a second copy of what was disclosed. The MCP server writes an event for
+every tool response; `MeteredClient` writes one for every outbound call. It
+answers the questions a CISO asks: which clients have read ruling X; what
+went to client Y last quarter; and, after a redaction, where the content had
+already gone. Redaction stops future loans. It cannot recall past ones, and
+the ledger is how the enterprise knows the extent of what it cannot recall.
+
+Entry classification in front matter, already designed under "Memory storage
+format", filters what a given reader can be lent before it reaches any model.
+Both depend on the SSO identity becoming `actor` (pivot step 1), which is not
+built: today `actor` is whatever the client supplies.
+
+**Conformance checking (to build).** Reading the ruling before answering only
+governs agents that choose to read it. Genie, Cortex Analyst, Copilot, and
+whatever a team builds next write their own SQL. Conformance governs them
+anyway, after the fact, with no integration beyond the query-log access
+induction already requires, because agent-generated SQL lands in the same
+warehouse log.
+
+This is conformance checking in the process-mining sense (Rozinat and van der
+Aalst, SRC-043). The rulings in force at time t are the normative model, the
+query log is observed behaviour, and the check measures the gap:
+
+```text
+new query in the warehouse log (any author, human or agent)
+  -> Stage 2: extract signature
+  -> match its measure to a ruled definition
+  -> compare to the ruling in force at the query's timestamp (Stage 4b comparison)
+  -> CONFORMS | SCOPE_NARROWING | NONCONFORMING | UNGOVERNED
+  -> NONCONFORMING: flag to the definition's owner, with both signatures
+```
+
+`UNGOVERNED` means the measure has no ruling yet. A rising count of these is
+the queue of forks worth surfacing next. No model call is needed anywhere in
+the path, so auditing every agent costs no disclosure.
+
+Conformance is also the drift re-check the vendor audit found nobody ships.
+The non-conformance rate per definition, over time, is the drift signal. A
+rate that rises means either a team has diverged or the ruling has gone
+stale, and past a threshold the definition reopens as a fork, with the
+non-conforming queries as new evidence for the other side. Flag first;
+blocking at the MCP server or in a pre-execution hook is a later, optional
+step that each customer opts into.
+
+**Precision is the prerequisite.** The Stage 4b comparison is the Tier 4
+classifier, at 55% precision on the labelled scenarios, and it over-flags
+scope filters. A checker with that error rate would mark "revenue for Books
+in 2021" non-conforming and be ignored within weeks. Structural comparison
+cannot ship as a checker. Execution-backed comparison can: apply the
+observed query's extra predicates to the ruled definition, execute both over
+a sample, and call it `SCOPE_NARROWING` when the results agree and
+`NONCONFORMING` when they differ beyond tolerance. A pure scope filter, applied
+to both sides, cancels out; a definitional filter does not. This is the
+materiality work already named for Stage 4b, now with a second consumer.
+Execution cost is bounded by sampling the log, not by checking every query.
+
+**Limits.** Conformance sees SQL only: an agent answering from documents or
+from a cached result is invisible to it. It inherits the single-aggregate
+contract; ratios and composites wait for the richer model. And none of this
+protects the underlying data, which remains the warehouse's access control.
+
 ### MVP readiness
 
 The current implementation is reusable for the first MVP because it already

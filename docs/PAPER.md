@@ -72,9 +72,26 @@ Google has named conflict resolution and described no mechanism [SRC-017].
 
 So the Uber failure is still possible inside every one of these platforms.
 Two teams' queries disagree; the induced layer absorbs whichever is more
-common; a reviewer clicks accept; the reason the other team had is lost. This
-report is about the loop that closes that gap, and about measuring whether it
-actually closes it.
+common; a reviewer clicks accept; the reason the other team had is lost.
+
+The gap matters more now than when Uber met it. When the analyst's surface
+was SQL, a definition sat in a `WHERE` clause a colleague could read and
+question, and that informal review was the control. In chat and agent
+interfaces the person asking never sees the SQL, so the control disappears at
+the same time as induction makes the majority definition official and agents
+repeat it in every answer. Better models do not close this. Two definitions
+of a measure can both be valid SQL, and which one the organization chose is a
+decision, not a property of the data. As SQL generation improves, a larger
+share of the remaining error is about meaning. BEAVER shows the shape:
+agentic frameworks reach 10.8% on private warehouses, and 30.1% only when the
+domain knowledge is supplied [SRC-038].
+
+What this calls for is a supervised correction loop. People label only the
+disputed cases, the memory keeps each label with its reason, and every later
+question reads it. Nothing is retrained. Whether answer accuracy improves as
+rulings accumulate is a hypothesis this report does not test (Section 2).
+This report is about the loop that closes the gap, and about measuring
+whether it actually closes it.
 
 ## 2. What is claimed, and what is not
 
@@ -390,6 +407,29 @@ the original design says, with Tier 5 as the regression guard.
 Snowflake verified-query repository, Databricks trusted assets, dbt, and the
 Apache Ossie interchange format, so the memory sits above the platforms and
 feeds them rather than competing with their free induction.
+
+**Conformance checking.** The loop in Section 4 governs agents that read the
+ruling before answering. Most agents will write their own SQL. Their queries
+land in the same warehouse log the corpus comes from, so the rulings in force
+can serve as the normative model and the log as observed behaviour, in the
+sense of Rozinat and van der Aalst [SRC-043]: extract each new query's
+signature, compare it to the ruling in force at its timestamp, and flag
+non-conformance to the definition's owner. The non-conformance rate per
+definition over time is the drift re-check that Section 3 finds no vendor
+ships, and the whole path needs no model call. It depends on the materiality
+work above: with structural comparison at 55% precision, a checker would mark
+scope filters as violations. Applying the observed query's extra predicates
+to the ruled definition and executing both cancels pure scope and leaves
+definitional differences.
+
+**Disclosure accounting.** Nothing in the design is trained; the memory is
+lent to a model one question at a time. What is lent is recorded nowhere
+today. A disclosure ledger, written by the MCP server per tool response and by
+the metered client per outbound call, with entry hashes rather than content,
+would let an enterprise answer which models have read a given ruling and
+where redacted content had already gone. The design limits and records
+disclosure to a hosted model; preventing it is a deployment choice of
+inference endpoint.
 
 ## 8. Reproducibility
 

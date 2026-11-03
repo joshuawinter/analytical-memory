@@ -4,6 +4,13 @@ A self-hosted, append-only memory of how an enterprise defines its numbers,
 with the human rulings that settle disagreements, built so that agents and
 people read the same record.
 
+Why now: when analysts worked in SQL, a definition sat in a `WHERE` clause a
+colleague could read and question. In chat and agent interfaces nobody sees
+the SQL, so that informal review is gone, and one wrong definition repeats in
+every answer. Better models write better SQL; they cannot know which of two
+valid definitions the company chose. That is a decision, and it has to be
+recorded where agents read it.
+
 Warehouse vendors now induce semantic layers from query history. Snowflake,
 Databricks, and Google ship it. What they ship stops at accept-or-reject per
 item: no record of why, no comparison of two definitions of the same
