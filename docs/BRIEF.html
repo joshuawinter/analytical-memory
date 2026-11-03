@@ -1,0 +1,682 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Source of the claude.ai artifact https://claude.ai/artifact/NVj3Tk9SwL2tecmyurENBE (private). Edit here, then republish. -->
+<title>Analytical Memory Brief</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a reference-architecture brief. Cool drafting paper, ink-blue structure,
+   and one burnt-orange "ruling" colour reserved for the human decision. */
+:root {
+  --paper: #F3F5F8;
+  --surface: #FFFFFF;
+  --ink: #13202D;
+  --muted: #566475;
+  --line: #D3DAE2;
+  --accent: #1E4E8C;
+  --accent-soft: #E3ECF7;
+  --ruling: #A8521A;
+  --ruling-soft: #F7E9DE;
+  --fork: #B42344;
+  --fork-soft: #F8E2E7;
+  --ok: #1D7A5F;
+  --ok-soft: #DDF1EA;
+  --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0E151D; --surface: #15202B; --ink: #E5ECF3; --muted: #98A7B7; --line: #283645;
+    --accent: #84B3F0; --accent-soft: #1A2B40; --ruling: #E8A06A; --ruling-soft: #3A2618;
+    --fork: #F28AA0; --fork-soft: #3A1A24; --ok: #63C9A4; --ok-soft: #13302A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0E151D; --surface: #15202B; --ink: #E5ECF3; --muted: #98A7B7; --line: #283645;
+  --accent: #84B3F0; --accent-soft: #1A2B40; --ruling: #E8A06A; --ruling-soft: #3A2618;
+  --fork: #F28AA0; --fork-soft: #3A1A24; --ok: #63C9A4; --ok-soft: #13302A;
+  color-scheme: dark;
+}
+
+body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0; }
+section { padding-block: 56px; border-top: 1px solid var(--line); }
+h1, h2, h3 { font-family: var(--f-display); font-stretch: 85%; line-height: 1.1; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2.1rem, 5.2vw, 3.6rem); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 700; }
+h3 { font-size: 1.15rem; font-weight: 700; font-stretch: 90%; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow { font-family: var(--f-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 1.15rem; color: var(--muted); }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.mono { font-family: var(--f-mono); }
+code { font-family: var(--f-mono); font-size: 0.88em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ruling-word { color: var(--ruling); }
+
+/* hero */
+.hero { padding-block: 64px 48px; display: grid; gap: 24px; }
+.hero h1 em { font-style: normal; color: var(--ruling); }
+.spine { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); background: var(--surface); margin-top: 8px; }
+.spine > div { padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.spine > div + div { border-left: 1px solid var(--line); }
+.spine .k { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.spine .v { font-family: var(--f-display); font-stretch: 88%; font-weight: 700; font-size: 1.12rem; line-height: 1.25; }
+@media (max-width: 900px) {
+  .spine { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .spine > div:nth-child(3) { border-left: 0; }
+  .spine > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+@media (max-width: 560px) {
+  .spine { grid-template-columns: 1fr; }
+  .spine > div + div { border-left: 0; border-top: 1px solid var(--line); }
+}
+
+/* two-column section heads */
+.sec-head { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; margin-bottom: 32px; }
+.sec-head > div { min-width: 0; }
+@media (max-width: 760px) { .sec-head { grid-template-columns: 1fr; gap: 12px; } }
+
+/* why now */
+.eras { background: var(--surface); border: 1px solid var(--line); overflow-x: auto; }
+.era-row { display: grid; grid-template-columns: 200px minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 12px 18px; border-bottom: 1px solid var(--line); font-size: 0.93rem; min-width: 560px; }
+.era-row:last-child { border-bottom: 0; }
+.era-head { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.era-head span:last-child { color: var(--ruling); }
+.era-k { font-weight: 600; }
+.why-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; margin-top: 32px; }
+@media (max-width: 760px) { .why-grid { grid-template-columns: 1fr; } }
+
+/* uber bars */
+.bars { display: grid; gap: 14px; background: var(--surface); border: 1px solid var(--line); padding: 24px; }
+.bar-row { display: grid; grid-template-columns: 130px minmax(0, 1fr) 70px; gap: 12px; align-items: center; }
+.bar-row .lbl { font-size: 0.9rem; color: var(--muted); }
+.bar-row .val { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; font-weight: 500; }
+.track { height: 22px; background: var(--accent-soft); position: relative; }
+.fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.fill.b { background: var(--fork); }
+.bars .note { font-size: 0.85rem; color: var(--muted); }
+@media (max-width: 480px) { .bar-row { grid-template-columns: 90px minmax(0, 1fr) 56px; } }
+
+/* diagrams */
+.diagram { background: var(--surface); border: 1px solid var(--line); overflow-x: auto; }
+.diagram svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.diagram-cap { font-size: 0.85rem; color: var(--muted); margin-top: 12px; }
+svg text { font-family: var(--f-body); fill: var(--ink); }
+svg .t-mono { font-family: var(--f-mono); }
+svg .t-muted { fill: var(--muted); }
+svg .t-head { font-family: var(--f-display); font-weight: 700; font-stretch: 88%; }
+svg .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+svg .box-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; }
+svg .box-rule { fill: var(--ruling-soft); stroke: var(--ruling); stroke-width: 1.4; }
+svg .box-fork { fill: var(--fork-soft); stroke: var(--fork); stroke-width: 1.2; }
+svg .box-ok { fill: var(--ok-soft); stroke: var(--ok); stroke-width: 1.2; }
+svg .panel { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 6 4; }
+svg .arrow { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+svg .ah { fill: var(--muted); }
+svg .axis { stroke: var(--line); stroke-width: 1.2; }
+svg .tick { stroke: var(--muted); stroke-width: 1; }
+svg .q { stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 3 3; }
+svg .qdot { fill: var(--ink); }
+svg .f-fork { fill: var(--fork); }
+svg .f-rule { fill: var(--ruling); }
+svg .f-ok { fill: var(--ok); }
+svg .t-on { fill: var(--surface); }
+
+/* claude enterprise */
+.ce-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; margin-top: 24px; align-items: start; }
+@media (max-width: 820px) { .ce-grid { grid-template-columns: 1fr; } }
+.chat { background: var(--surface); border: 1px solid var(--line); padding: 0 0 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.chat-top { display: flex; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.msg { margin: 0 16px; padding: 10px 14px; font-size: 0.92rem; line-height: 1.5; max-width: 88%; }
+.msg.me { align-self: flex-end; background: var(--accent-soft); }
+.msg.ai { align-self: flex-start; border: 1px solid var(--line); }
+.prov { display: block; margin-top: 10px; padding: 8px 10px; background: var(--ruling-soft); font-family: var(--f-mono); font-size: 0.78rem; line-height: 1.6; overflow-wrap: anywhere; }
+.prov b { color: var(--ruling); font-weight: 500; }
+
+.answers { display: grid; gap: 6px; margin-top: 10px; }
+.ans { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 12px; align-items: baseline; padding: 8px 10px; background: var(--paper); border: 1px solid var(--line); }
+.ans .amt { font-family: var(--f-display); font-stretch: 85%; font-weight: 800; font-size: 1.25rem; font-variant-numeric: tabular-nums; grid-row: span 2; align-self: center; }
+.ans .def { font-weight: 500; }
+.ans .use { grid-column: 2 / 4; font-size: 0.78rem; color: var(--muted); }
+.tag { font-family: var(--f-mono); font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 6px; white-space: nowrap; }
+.tag-no { background: var(--fork-soft); color: var(--fork); }
+.tag-ok { background: var(--ok-soft); color: var(--ok); }
+.who { display: block; margin-top: 8px; font-size: 0.82rem; color: var(--ruling); font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chips span { font-size: 0.78rem; padding: 3px 9px; border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; }
+.event { margin: 2px 16px; padding: 6px 10px; text-align: center; font-family: var(--f-mono); font-size: 0.72rem; color: var(--ruling); border-top: 1px dashed var(--ruling); border-bottom: 1px dashed var(--ruling); }
+.chat-note { margin: 0 16px; font-size: 0.75rem; color: var(--muted); }
+.ladder { margin: 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 0; border-left: 2px solid var(--line); }
+.ladder li { counter-increment: step; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 10px; padding: 8px 0 8px 12px; position: relative; }
+.ladder li::before { content: counter(step); grid-row: span 2; font-family: var(--f-mono); font-size: 0.8rem; color: var(--accent); }
+.ladder li:last-child { opacity: 0.75; }
+.ladder b { font-family: var(--f-display); font-stretch: 88%; }
+.ladder span { font-size: 0.9rem; color: var(--muted); }
+.conf-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 32px; margin-top: 40px; align-items: center; }
+.conf-grid .diagram svg { min-width: 480px; }
+@media (max-width: 820px) { .conf-grid { grid-template-columns: 1fr; } }
+
+/* states */
+.states { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.state { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--c); padding: 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.state .pill { align-self: flex-start; font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; background: var(--cs); color: var(--c); }
+.state .does { font-family: var(--f-display); font-stretch: 88%; font-weight: 700; font-size: 1.1rem; }
+.state p { font-size: 0.93rem; color: var(--muted); }
+.s1 { --c: var(--ok); --cs: var(--ok-soft); }
+.s2 { --c: var(--fork); --cs: var(--fork-soft); }
+.s3 { --c: var(--ruling); --cs: var(--ruling-soft); }
+.s1 { --c: var(--muted); --cs: var(--paper); }
+.s4 { --c: var(--accent); --cs: var(--accent-soft); }
+.states { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { .states { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .states { grid-template-columns: 1fr; } }
+
+/* ruling record */
+.record-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 820px) { .record-grid { grid-template-columns: 1fr; } }
+.record { background: var(--surface); border: 1.5px solid var(--ruling); font-family: var(--f-mono); font-size: 0.85rem; min-width: 0; }
+.record header { background: var(--ruling-soft); color: var(--ruling); padding: 10px 16px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.72rem; }
+.record dl { margin: 0; padding: 8px 16px 16px; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px 14px; }
+.record dt { color: var(--muted); }
+.record dd { margin: 0; overflow-wrap: anywhere; }
+.record dd.why { font-family: var(--f-body); font-size: 0.95rem; }
+.record footer { border-top: 1px dashed var(--line); padding: 10px 16px; color: var(--muted); font-size: 0.75rem; overflow-wrap: anywhere; }
+
+/* matrix */
+.matrix-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 0.9rem; }
+th, td { padding: 12px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+thead th { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+tbody th { font-weight: 600; white-space: nowrap; }
+tr.us { background: var(--ruling-soft); }
+tr.us th { color: var(--ruling); }
+.y { color: var(--ok); font-weight: 600; }
+.n { color: var(--muted); }
+.p { color: var(--ruling); font-weight: 600; }
+td small { display: block; color: var(--muted); font-size: 0.78rem; line-height: 1.4; margin-top: 2px; }
+
+/* properties */
+.props { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); background: var(--surface); }
+.prop { padding: 20px 22px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line); min-width: 0; }
+.prop:nth-child(odd) { border-right: 1px solid var(--line); }
+.prop:nth-last-child(-n+2) { border-bottom: 0; }
+.prop .k { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.prop p { font-size: 0.93rem; color: var(--muted); }
+@media (max-width: 720px) {
+  .props { grid-template-columns: 1fr; }
+  .prop:nth-child(odd) { border-right: 0; }
+  .prop:nth-last-child(2) { border-bottom: 1px solid var(--line); }
+}
+
+/* evidence */
+.evidence { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.ev { background: var(--surface); border: 1px solid var(--line); padding: 18px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ev .num { font-family: var(--f-display); font-stretch: 80%; font-weight: 800; font-size: 2.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.ev .num.warn { color: var(--ruling); }
+.ev p { font-size: 0.88rem; color: var(--muted); }
+@media (max-width: 820px) { .evidence { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.finding { margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--fork); padding: 20px 22px; display: flex; flex-direction: column; gap: 8px; }
+
+/* pilot */
+.pilot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.step { background: var(--surface); border: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.step .k { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ruling); }
+.step p { font-size: 0.93rem; color: var(--muted); }
+@media (max-width: 760px) { .pilot { grid-template-columns: 1fr; } }
+
+.closing { padding-block: 56px 72px; border-top: 1px solid var(--line); display: grid; gap: 16px; }
+.closing .big { font-family: var(--f-display); font-stretch: 85%; font-weight: 700; font-size: clamp(1.4rem, 3vw, 1.9rem); line-height: 1.2; max-width: 30ch; text-wrap: balance; }
+.repo { font-family: var(--f-mono); font-size: 0.9rem; }
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Analytical Memory · brief for enterprise architects</div>
+  <h1>Your warehouse now drafts your metric definitions. Nothing records <em>who settled them, or why.</em></h1>
+  <p class="lede">Analytical Memory is a self-hosted system of record for what your numbers mean. It finds rival definitions of the same measure, gets a dated human ruling with a reason, keeps every ruling in an append-only ledger, and answers people and agents from the ruling in force at the moment they ask.</p>
+  <div class="spine">
+    <div><span class="k">The gap</span><span class="v">Induced semantic layers keep whichever definition is most common.</span></div>
+    <div><span class="k">The control</span><span class="v">A human ruling, with its rationale, outranks frequency.</span></div>
+    <div><span class="k">The asset</span><span class="v">An auditable history of how the enterprise decided what its numbers mean.</span></div>
+    <div><span class="k">The ownership</span><span class="v">It stays yours. Models borrow it one question at a time. Nothing is trained in.</span></div>
+  </div>
+</header>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">01 · The failure mode</div>
+    <div class="stack">
+      <h2>Same metric, same city, same week, two numbers.</h2>
+      <p>In 2021 Uber's data platform team reported that "Shopping Session" read 6.53 million in one tool and 6.20 million in another. One tool carried outdated filters. Their fix was a certified metric store where someone writes each definition by hand. Nobody published the step before that: noticing from usage that two definitions were in circulation, and recording who settled it and why.</p>
+    </div>
+  </div>
+  <div class="bars" role="img" aria-label="Bar chart: Tool A 6.53 million, Tool B 6.20 million shopping sessions, drawn to scale from zero.">
+    <div class="bar-row"><span class="lbl">Tool A</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="val">6.53M</span></div>
+    <div class="bar-row"><span class="lbl">Tool B</span><div class="track"><div class="fill b" style="width:94.95%"></div></div><span class="val">6.20M</span></div>
+    <p class="note">Drawn to scale from zero. A 5% gap looks like a rounding difference, which is why it survives review. Source: Uber Engineering, "The Journey Towards Metric Standardization", 2021.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">02 · Why now</div>
+    <div class="stack">
+      <h2>The analyst who used to catch the wrong filter is leaving the loop.</h2>
+      <p>When the analyst's tool was SQL, the definition sat in a <code>WHERE</code> clause a colleague could read and question. That informal review was the control. In chat, the person asking never sees the SQL, and the definition is buried in code nobody reads.</p>
+    </div>
+  </div>
+  <div class="eras" role="table" aria-label="How the analyst's working surface changes from the SQL era to the chat era">
+    <div class="era-row era-head" role="row"><span role="columnheader"></span><span role="columnheader">SQL era</span><span role="columnheader">Chat and agent era</span></div>
+    <div class="era-row" role="row"><span class="era-k" role="rowheader">Who asks</span><span role="cell">An analyst who writes the query</span><span role="cell">A business user who types a question</span></div>
+    <div class="era-row" role="row"><span class="era-k" role="rowheader">Where the definition lives</span><span role="cell">In SQL a colleague can read</span><span role="cell">In generated SQL nobody reads</span></div>
+    <div class="era-row" role="row"><span class="era-k" role="rowheader">Who catches a wrong one</span><span role="cell">Peer review, the next analyst, the report owner</span><span role="cell"><strong class="ruling-word">Nobody, unless the decision is recorded</strong></span></div>
+    <div class="era-row" role="row"><span class="era-k" role="rowheader">Reach of one mistake</span><span role="cell">One dashboard</span><span role="cell">Every answer every agent gives</span></div>
+    <div class="era-row" role="row"><span class="era-k" role="rowheader">Who drafts the semantic layer</span><span role="cell">A person, by hand</span><span role="cell">The warehouse, from the majority of past queries</span></div>
+  </div>
+  <div class="why-grid">
+    <div class="stack">
+      <h3>Better models fix the SQL, not the decision.</h3>
+      <p>Two definitions of store sales can both be valid SQL. Which one your company chose is a decision, and decisions are not in the data. As models get better at writing SQL, a larger share of the remaining errors are about meaning. The benchmarks already show it: BEAVER, built on real enterprise warehouses, reports 10.8% accuracy for agentic frameworks, rising to 30.1% only when the domain knowledge is supplied.</p>
+    </div>
+    <div class="stack">
+      <h3>A supervised correction loop.</h3>
+      <p>People label only the disputed cases. The memory keeps each label with its reason, and every later question reads it. Nothing is retrained, so each correction applies at once, to every model, and can be revoked. The expected effect is that answer accuracy improves as rulings accumulate. That effect is the claim the pilot is designed to measure.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">03 · Where it sits</div>
+    <div class="stack">
+      <h2>An additive layer between the evidence you already have and everything that consumes meaning.</h2>
+      <p>The warehouse stays the system of record for data. Analytical Memory becomes the system of record for meaning. It reads the drafts your platform already produces and publishes approved definitions back out. It replaces nothing.</p>
+    </div>
+  </div>
+  <div class="diagram">
+    <svg viewBox="0 0 980 430" role="img" aria-label="Reference architecture: enterprise evidence flows into Analytical Memory, which detects forks, records human rulings in a ledger, and answers agents, semantic layers and reviewers.">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+      </defs>
+      <!-- left: evidence -->
+      <text x="20" y="34" class="t-mono t-muted" font-size="11" letter-spacing="1">EVIDENCE YOU ALREADY HAVE</text>
+      <rect x="20" y="52" width="220" height="74" class="box"/>
+      <text x="36" y="82" class="t-head" font-size="15">SQL query history</text>
+      <text x="36" y="104" class="t-muted" font-size="12">what analysts actually compute</text>
+      <rect x="20" y="142" width="220" height="74" class="box"/>
+      <text x="36" y="172" class="t-head" font-size="15">Warehouse-induced drafts</text>
+      <text x="36" y="194" class="t-muted" font-size="12">Snowflake, Databricks · designed</text>
+      <rect x="20" y="232" width="220" height="74" class="box"/>
+      <text x="36" y="262" class="t-head" font-size="15">Data profiles</text>
+      <text x="36" y="284" class="t-muted" font-size="12">column cardinality, samples</text>
+
+      <!-- middle panel -->
+      <rect x="290" y="20" width="400" height="390" class="panel"/>
+      <text x="306" y="44" class="t-mono" font-size="11" letter-spacing="1" style="fill:var(--accent)">ANALYTICAL MEMORY · SELF-HOSTED</text>
+      <rect x="310" y="60" width="360" height="62" class="box-fork"/>
+      <text x="326" y="86" class="t-head" font-size="15">Detect rival definitions</text>
+      <text x="326" y="107" class="t-muted" font-size="12">same measure, same grain, different filters → a fork</text>
+      <rect x="310" y="140" width="360" height="62" class="box-rule"/>
+      <text x="326" y="166" class="t-head" font-size="15">Human ruling</text>
+      <text x="326" y="187" class="t-muted" font-size="12">decision · rationale (required) · who · effective date</text>
+      <rect x="310" y="220" width="360" height="62" class="box-acc"/>
+      <text x="326" y="246" class="t-head" font-size="15">Append-only, hash-chained ledger</text>
+      <text x="326" y="267" class="t-muted" font-size="12">rulings and memory versions in one verifiable sequence</text>
+      <rect x="310" y="300" width="360" height="62" class="box-ok"/>
+      <text x="326" y="326" class="t-head" font-size="15">Answer as of t, then validate</text>
+      <text x="326" y="347" class="t-muted" font-size="12">ruling in force → compile to SQL → execute → compare</text>
+      <path d="M490 122 V140" class="arrow" marker-end="url(#ah)"/>
+      <path d="M490 202 V220" class="arrow" marker-end="url(#ah)"/>
+      <path d="M490 282 V300" class="arrow" marker-end="url(#ah)"/>
+      <text x="306" y="394" class="t-muted" font-size="11.5">One write path shared by review UI, CLI and MCP server</text>
+
+      <!-- arrows in -->
+      <path d="M240 89 C 270 89, 280 91, 308 91" class="arrow" marker-end="url(#ah)"/>
+      <path d="M240 179 C 275 179, 275 100, 308 96" class="arrow" marker-end="url(#ah)"/>
+      <path d="M240 269 C 280 269, 275 110, 308 102" class="arrow" marker-end="url(#ah)"/>
+
+      <!-- right: consumers -->
+      <text x="740" y="34" class="t-mono t-muted" font-size="11" letter-spacing="1">WHAT CONSUMES MEANING</text>
+      <rect x="740" y="52" width="220" height="90" class="box"/>
+      <text x="756" y="80" class="t-head" font-size="15">AI agents and copilots</text>
+      <text x="756" y="101" class="t-muted" font-size="12">via MCP: search, investigate</text>
+      <text x="756" y="120" class="t-mono" font-size="11" style="fill:var(--fork)">cannot approve</text>
+      <rect x="740" y="158" width="220" height="90" class="box"/>
+      <text x="756" y="186" class="t-head" font-size="15">Semantic layers and BI</text>
+      <text x="756" y="207" class="t-muted" font-size="12">approved definitions</text>
+      <text x="756" y="225" class="t-muted" font-size="12">published outward · designed</text>
+      <rect x="740" y="264" width="220" height="90" class="box-rule"/>
+      <text x="756" y="292" class="t-head" font-size="15">Domain owners</text>
+      <text x="756" y="313" class="t-muted" font-size="12">rule on forks as they ask</text>
+      <text x="756" y="331" class="t-muted" font-size="12">ordinary questions</text>
+
+      <!-- arrows out -->
+      <path d="M670 331 C 705 331, 705 97, 738 97" class="arrow" marker-end="url(#ah)"/>
+      <path d="M670 331 C 705 331, 705 203, 738 203" class="arrow" marker-end="url(#ah)"/>
+      <path d="M738 309 C 705 309, 705 171, 672 171" class="arrow" marker-end="url(#ah)"/>
+    </svg>
+  </div>
+  <p class="diagram-cap">Induction from query history is the platforms' job and an input here. The product is the part after it: the fork, the ruling, the ledger and the time-aware answer.</p>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">04 · The gap, by vendor</div>
+    <div class="stack">
+      <h2>Every platform stops at accept or reject.</h2>
+      <p>Each vendor row was checked against that vendor's own documentation in October 2026. A dash means the documentation says nothing either way.</p>
+    </div>
+  </div>
+  <div class="matrix-wrap">
+    <table>
+      <thead><tr><th></th><th>Drafts definitions from usage</th><th>Shows rival definitions side by side</th><th>Reason recorded per approval</th><th>Version history</th><th>Re-checks approved definitions against later use</th></tr></thead>
+      <tbody>
+        <tr><th>Snowflake</th><td class="y">Yes<small>Semantic View Autopilot</small></td><td class="n">No<small>structural checks per view</small></td><td class="n">No<small>verified_by name, no reason field</small></td><td class="n">—</td><td class="n">No</td></tr>
+        <tr><th>Databricks</th><td class="y">Yes<small>Genie, from popular queries</small></td><td class="n">No<small>authors resolve by hand</small></td><td class="n">No</td><td class="n">No<small>metric views unversioned</small></td><td class="n">No</td></tr>
+        <tr><th>Google</th><td class="y">Preview<small>Knowledge Catalog</small></td><td class="n">Named<small>no mechanism described</small></td><td class="n">No</td><td class="n">—</td><td class="n">No</td></tr>
+        <tr><th>Microsoft Fabric IQ</th><td class="n">—</td><td class="n">No</td><td class="n">No<small>proposal-first review</small></td><td class="y">Yes<small>named versions</small></td><td class="n">No</td></tr>
+        <tr class="us"><th>Analytical Memory</th><td>Consumes theirs<small>plus its own induction as a feeder</small></td><td class="y">Yes<small>a fork, with evidence for each side</small></td><td class="y">Required<small>no ruling without one</small></td><td class="y">Every version<small>hash-chained, nothing erased</small></td><td class="p">Designed<small>conformance check over the query log; not built</small></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">05 · The control</div>
+    <div class="stack">
+      <h2>Every answer carries one of four labels.</h2>
+      <p>The label decides how an answer is presented, never whether the analyst sees one. No number is presented as official until a named person has ruled.</p>
+    </div>
+  </div>
+  <div class="states">
+    <div class="state s2"><span class="pill">Unruled</span><span class="does">Show every answer, none official.</span><p>Nobody has ruled. If rival definitions are in use, each one's number comes back side by side with the person who decides. The more popular one gets no special treatment.</p></div>
+    <div class="state s3"><span class="pill">Approved</span><span class="does">Answer from the ruling.</span><p>A named person ruled, with a reason and an effective date. The ruling outranks frequency.</p></div>
+    <div class="state s1"><span class="pill">Not approved</span><span class="does">Still visible, clearly marked.</span><p>The rival the owner ruled against. It stays answerable on request, so the analyst can see what changed and why.</p></div>
+    <div class="state s4"><span class="pill">Superseded</span><span class="does">Answers for its own period.</span><p>A later ruling replaced it. Questions about the time it governed still get it, and its history stays readable.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="record-grid">
+    <div class="stack">
+      <div class="eyebrow">06 · The ruling record</div>
+      <h2>A verdict without a reason teaches nothing.</h2>
+      <p>"Sales definition wins" settles one case. "These differ by grain, not definition; both are valid, disambiguate by date basis" settles the next thousand without a human. So the rationale is mandatory, and the ruling is stored as data the agent reads at question time. Nothing is trained into a model, so a ruling can be inspected, corrected and revoked.</p>
+      <p>The ledger is plain markdown with flat front matter. An auditor can read it with a text editor, and any edit made outside the ledger is detected.</p>
+    </div>
+    <article class="record" aria-label="Example ruling record">
+      <header><span>Ruling · store sales</span><span>Example</span></header>
+      <dl>
+        <dt>measure</dt><dd>store sales</dd>
+        <dt>approved</dt><dd class="why">Excluding voided and giveaway tickets</dd>
+        <dt>not approved</dt><dd class="why">All ticket lines</dd>
+        <dt>in use by</dt><dd>3 of 13 saved queries (approved) · 10 of 13 (not approved)</dd>
+        <dt>rationale</dt><dd class="why">Voided and giveaway tickets still carry an amount. Store sales exclude them. The majority query was copied from a stale dashboard.</dd>
+        <dt>decided by</dt><dd>finance data owner</dd>
+        <dt>valid from</dt><dd>January</dd>
+        <dt>supersedes</dt><dd>none</dd>
+      </dl>
+      <footer>Data path, for whoever needs it: SUM(ss_net_paid) WHERE ss_quantity &gt; 0. Illustrative, based on the Tier 5 test corpus (TPC-DS). Stored as an immutable, content-addressed version in the ledger.</footer>
+    </article>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">07 · Time</div>
+    <div class="stack">
+      <h2>Ask as of any date and get the answer that was governing then.</h2>
+      <p>When finance re-rules in April, February's reports still have to be explainable under February's ruling. Rulings carry an effective date and are resolved against the moment the question is about. This is the scenario the Tier 5 test runs.</p>
+    </div>
+  </div>
+  <div class="diagram">
+    <svg viewBox="0 0 980 250" role="img" aria-label="Timeline: unruled in December; ruling 1 approves the minority definition from January; ruling 2 supersedes it from April; questions asked as of December, February and April get no official answer, ruling 1 and ruling 2 respectively.">
+      <defs>
+        <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+      </defs>
+      <!-- scale: Dec=60 ... May=900, 168px per month -->
+      <rect x="60" y="70" width="168" height="40" class="f-fork" opacity="0.9"/>
+      <text x="72" y="95" class="t-on" font-size="13" font-weight="600">Unruled</text>
+      <rect x="228" y="70" width="504" height="40" class="f-rule"/>
+      <text x="240" y="95" class="t-on" font-size="13" font-weight="600">Ruling 1 · approve "excluding voids" (minority)</text>
+      <rect x="732" y="70" width="188" height="40" class="f-ok"/>
+      <text x="744" y="95" class="t-on" font-size="13" font-weight="600">Ruling 2 · supersedes</text>
+
+      <line x1="60" y1="130" x2="930" y2="130" class="axis"/>
+      <g class="t-mono t-muted" font-size="11">
+        <line x1="60" y1="126" x2="60" y2="134" class="tick"/><text x="60" y="150">DEC</text>
+        <line x1="228" y1="126" x2="228" y2="134" class="tick"/><text x="228" y="150">JAN</text>
+        <line x1="396" y1="126" x2="396" y2="134" class="tick"/><text x="396" y="150">FEB</text>
+        <line x1="564" y1="126" x2="564" y2="134" class="tick"/><text x="564" y="150">MAR</text>
+        <line x1="732" y1="126" x2="732" y2="134" class="tick"/><text x="732" y="150">APR</text>
+        <line x1="900" y1="126" x2="900" y2="134" class="tick"/><text x="900" y="150">MAY</text>
+      </g>
+
+      <text x="60" y="40" class="t-mono t-muted" font-size="11" letter-spacing="1">GOVERNING DEFINITION OVER TIME</text>
+
+      <!-- questions -->
+      <line x1="144" y1="60" x2="144" y2="178" class="q"/><circle cx="144" cy="178" r="4" class="qdot"/>
+      <text x="144" y="200" font-size="12.5" font-weight="600" text-anchor="middle">Ask as of mid-Dec</text>
+      <text x="144" y="218" font-size="12" text-anchor="middle" class="t-muted">both shown, none official</text>
+
+      <line x1="480" y1="60" x2="480" y2="178" class="q"/><circle cx="480" cy="178" r="4" class="qdot"/>
+      <text x="480" y="200" font-size="12.5" font-weight="600" text-anchor="middle">Ask as of mid-Feb</text>
+      <text x="480" y="218" font-size="12" text-anchor="middle" class="t-muted">minority definition; equals hidden truth</text>
+
+      <line x1="816" y1="60" x2="816" y2="178" class="q"/><circle cx="816" cy="178" r="4" class="qdot"/>
+      <text x="816" y="200" font-size="12.5" font-weight="600" text-anchor="middle">Ask as of mid-Apr+</text>
+      <text x="816" y="218" font-size="12" text-anchor="middle" class="t-muted">ruling 2; ruling 1 still readable</text>
+    </svg>
+  </div>
+  <p class="diagram-cap">In the test, ruling 2 reverses ruling 1 to prove that a later decision replaces an earlier one without erasing it. Today an unruled measure returns its definitions without numbers; returning both numbers is designed. One time axis today: when a ruling takes effect. Separating "when it was true" from "when we recorded it" (full bitemporal history) is a design question still open.</p>
+  <div class="conf-grid">
+    <div class="stack">
+      <h3>Approval is a decision. Confidence is earned over time.</h3>
+      <p>Approval is not a probability: a named person decided, or nobody has. If it were a likelihood, frequency would be back in charge. What does vary is how far to trust a standing ruling. It rises as later usage conforms and results validate. It falls as teams diverge, challenges pile up, or the ruling ages.</p>
+      <p>Below a threshold the definition reopens and the owner is asked again. Confidence decides when to ask. It never decides the answer.</p>
+      <p class="diagram-cap">Without ground truth nobody can measure the probability that a definition is correct. What can be measured is how well usage agrees with the ruling, over time. Designed, not built: it runs on the conformance checks in section 09.</p>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 600 270" role="img" aria-label="Schematic: confidence in a ruling rises after approval as usage conforms, then falls as teams diverge; when it crosses the reopen threshold the definition returns to contested.">
+        <line x1="50" y1="30" x2="50" y2="200" class="axis"/>
+        <line x1="50" y1="200" x2="580" y2="200" class="axis"/>
+        <text x="20" y="115" class="t-mono t-muted" font-size="10.5" transform="rotate(-90 20 115)" text-anchor="middle">CONFIDENCE</text>
+        <text x="575" y="218" class="t-mono t-muted" font-size="10.5" text-anchor="end">TIME</text>
+        <line x1="50" y1="160" x2="580" y2="160" class="q"/>
+        <text x="576" y="153" font-size="11" text-anchor="end" class="t-muted">reopen threshold</text>
+        <path d="M70 140 C 150 140, 200 72, 290 66 S 400 62, 430 76 C 470 96, 500 150, 545 188" fill="none" style="stroke:var(--accent)" stroke-width="2.5"/>
+        <circle cx="70" cy="140" r="5" class="f-rule"/>
+        <text x="78" y="128" font-size="11.5" font-weight="600">owner rules</text>
+        <text x="190" y="58" font-size="11.5" class="t-muted">later usage conforms</text>
+        <text x="448" y="76" font-size="11.5" class="t-muted">teams diverge</text>
+        <circle cx="519" cy="160" r="5" class="f-fork"/>
+        <text x="512" y="145" font-size="11.5" font-weight="600" text-anchor="end">reopened</text>
+        <rect x="70" y="232" width="449" height="18" class="f-rule"/>
+        <text x="80" y="245" font-size="11" class="t-on" font-weight="600">Approved</text>
+        <rect x="519" y="232" width="61" height="18" class="f-fork"/>
+        <text x="525" y="245" font-size="11" class="t-on" font-weight="600">Contested</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">08 · In use, inside Claude Enterprise</div>
+    <div class="stack">
+      <h2>Ask a question, get the answers, and see which one is approved.</h2>
+      <p>The analyst never has to see SQL. A contested measure comes back as every answer in use, each labelled, with the person who decides. The analyst drills from the number to the definition, the decision and the evidence. The domain owner rules in the same chat client, and from then on there is one approved answer.</p>
+    </div>
+  </div>
+  <div class="diagram">
+    <svg viewBox="0 0 1000 930" role="img" aria-label="Sequence diagram. The analyst asks for store sales in 2002. Analytical Memory finds two definitions and no ruling, runs both in the warehouse, and returns both answers labelled not approved with the finance owner as decider. The analyst asks why they differ and gets the evidence. The finance owner approves one definition with a reason, recorded in the ledger. Later questions return one approved answer with the decision and reason. Separately, the query log is checked for conformance and flags go to the owner without passing through the model.">
+      <defs>
+        <marker id="sq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+      </defs>
+      <rect x="300" y="14" width="160" height="908" style="fill:var(--accent-soft)" opacity="0.55"/>
+      <text x="380" y="34" text-anchor="middle" class="t-mono t-muted" font-size="10.5" letter-spacing="1">ANTHROPIC-HOSTED</text>
+      <rect x="540" y="14" width="446" height="908" class="panel"/>
+      <text x="763" y="34" text-anchor="middle" class="t-mono" font-size="10.5" letter-spacing="1" style="fill:var(--accent)">YOUR BOUNDARY</text>
+
+      <rect x="14" y="46" width="112" height="40" class="box"/><text x="70" y="71" text-anchor="middle" class="t-head" font-size="14">Analyst</text>
+      <rect x="140" y="46" width="112" height="40" class="box-rule"/><text x="196" y="71" text-anchor="middle" class="t-head" font-size="14">Finance owner</text>
+      <rect x="320" y="46" width="120" height="40" class="box-acc"/><text x="380" y="71" text-anchor="middle" class="t-head" font-size="14">Claude</text>
+      <rect x="580" y="46" width="160" height="40" class="box-acc"/><text x="660" y="71" text-anchor="middle" class="t-head" font-size="14">Analytical Memory</text>
+      <rect x="830" y="46" width="140" height="40" class="box"/><text x="900" y="71" text-anchor="middle" class="t-head" font-size="14">Warehouse</text>
+      <g class="axis" stroke-dasharray="2 4">
+        <line x1="70" y1="86" x2="70" y2="918"/><line x1="196" y1="86" x2="196" y2="918"/>
+        <line x1="380" y1="86" x2="380" y2="918"/><line x1="660" y1="86" x2="660" y2="918"/>
+        <line x1="900" y1="86" x2="900" y2="918"/>
+      </g>
+
+      <text x="14" y="114" class="t-mono" font-size="10.5" letter-spacing="1" style="fill:var(--fork)">1 · FIRST QUESTION: EVERY ANSWER IN USE COMES BACK</text>
+      <path d="M70 140 H378" class="arrow" marker-end="url(#sq)"/><text x="80" y="134" font-size="12">"Store sales in 2002?"</text>
+      <path d="M380 170 H658" class="arrow" marker-end="url(#sq)"/><text x="392" y="164" font-size="11.5">ask the memory</text>
+      <rect x="586" y="182" width="148" height="30" class="box-fork"/><text x="660" y="201" text-anchor="middle" font-size="11">2 definitions · no ruling</text>
+      <path d="M660 236 H898" class="arrow" marker-end="url(#sq)"/><text x="672" y="230" font-size="11.5">run both definitions</text>
+      <path d="M900 264 H662" class="arrow" marker-end="url(#sq)"/><text x="672" y="258" font-size="11.5">two results</text>
+      <path d="M660 292 H382" class="arrow" marker-end="url(#sq)"/><text x="392" y="286" font-size="11.5">both answers, labelled, + who decides</text>
+      <text x="652" y="308" text-anchor="end" font-size="10.5" class="t-mono" style="fill:var(--ruling)">disclosure logged</text>
+      <path d="M380 332 H72" class="arrow" marker-end="url(#sq)"/><text x="88" y="326" font-size="12">$8.65M or $8.52M · finance decides</text>
+
+      <text x="14" y="368" class="t-mono" font-size="10.5" letter-spacing="1" style="fill:var(--ruling)">2 · THE ANALYST DRILLS IN; THE OWNER DECIDES</text>
+      <path d="M70 394 H378" class="arrow" marker-end="url(#sq)"/><text x="80" y="388" font-size="12">"Why do they differ?"</text>
+      <path d="M380 424 H658" class="arrow" marker-end="url(#sq)"/><text x="392" y="418" font-size="11.5">evidence for each side</text>
+      <path d="M660 454 H382" class="arrow" marker-end="url(#sq)"/><text x="392" y="448" font-size="11.5">usage, difference, open question</text>
+      <text x="652" y="470" text-anchor="end" font-size="10.5" class="t-mono" style="fill:var(--ruling)">disclosure logged</text>
+      <path d="M380 494 H72" class="arrow" marker-end="url(#sq)"/><text x="88" y="488" font-size="11.5">Voided tickets: 10 queries count them, 3 don't</text>
+      <path d="M196 526 H378" class="arrow" marker-end="url(#sq)"/><text x="204" y="520" font-size="12">"Approve: excl. voids"</text>
+      <path d="M380 556 H658" class="arrow" marker-end="url(#sq)"/><text x="392" y="550" font-size="11.5">record the owner's decision</text>
+      <text x="392" y="572" font-size="10.5" class="t-muted">owner's words · reason · SSO identity</text>
+      <rect x="586" y="584" width="148" height="30" class="box-rule"/><text x="660" y="603" text-anchor="middle" font-size="11">appended to ledger</text>
+
+      <text x="14" y="646" class="t-mono" font-size="10.5" letter-spacing="1" style="fill:var(--ok)">3 · FROM NOW ON: ONE APPROVED ANSWER</text>
+      <path d="M70 672 H378" class="arrow" marker-end="url(#sq)"/><text x="80" y="666" font-size="12">"Store sales in 2002?"</text>
+      <path d="M380 702 H658" class="arrow" marker-end="url(#sq)"/><text x="392" y="696" font-size="11.5">ask the memory</text>
+      <path d="M660 730 H898" class="arrow" marker-end="url(#sq)"/><text x="672" y="724" font-size="11.5">run the approved definition</text>
+      <path d="M900 758 H662" class="arrow" marker-end="url(#sq)"/><text x="672" y="752" font-size="11.5">result</text>
+      <path d="M660 786 H382" class="arrow" marker-end="url(#sq)"/><text x="392" y="780" font-size="11.5">answer + decision + reason</text>
+      <text x="652" y="802" text-anchor="end" font-size="10.5" class="t-mono" style="fill:var(--ruling)">disclosure logged</text>
+      <path d="M380 826 H72" class="arrow" marker-end="url(#sq)"/><text x="88" y="820" font-size="12">$8.52M · approved by finance owner</text>
+
+      <text x="560" y="862" class="t-mono" font-size="10.5" letter-spacing="1" style="fill:var(--accent)">ALWAYS ON · NO MODEL CALL</text>
+      <path d="M900 886 H662" class="arrow" marker-end="url(#sq)"/><text x="888" y="880" text-anchor="end" font-size="11">query log, incl. other agents' queries</text>
+      <path d="M660 912 H198" class="arrow" stroke-dasharray="5 4" marker-end="url(#sq)"/><text x="560" y="906" text-anchor="end" font-size="11">conformance flag via review queue, not via the model</text>
+    </svg>
+  </div>
+  <div class="ce-grid">
+    <div class="chat" aria-label="Illustrative chat transcript">
+      <div class="chat-top"><span>What the analyst sees</span><span>Illustrative</span></div>
+      <div class="msg me">Store sales in 2002?</div>
+      <div class="msg ai">Two definitions are in use, and finance hasn't decided which is official.
+        <div class="answers">
+          <div class="ans"><span class="amt">$8.65M</span><span class="def">All ticket lines</span><span class="tag tag-no">Unruled</span><span class="use">10 saved queries</span></div>
+          <div class="ans"><span class="amt">$8.52M</span><span class="def">Excluding voided and giveaway tickets</span><span class="tag tag-no">Unruled</span><span class="use">3 saved queries</span></div>
+        </div>
+        <span class="who">Decides: finance data owner</span>
+        <div class="chips"><span>Why do they differ?</span><span>Who uses each?</span><span>Ask the owner</span></div>
+      </div>
+      <div class="msg me">Why do they differ?</div>
+      <div class="msg ai">Voided and giveaway tickets still carry an amount. Ten saved queries count them and three exclude them. The gap is $134K, about 1.5%.</div>
+      <div class="event">Finance data owner approves "Excluding voided and giveaway tickets" · reason recorded · January</div>
+      <div class="msg me">Store sales in 2002?</div>
+      <div class="msg ai">
+        <div class="answers"><div class="ans"><span class="amt">$8.52M</span><span class="def">Excluding voided and giveaway tickets</span><span class="tag tag-ok">Approved</span><span class="use">finance data owner · January</span></div></div>
+        <span class="who">Why: voided tickets still carry an amount</span>
+        <div class="chips"><span>Show the evidence</span><span>Show the data path</span></div>
+      </div>
+      <p class="chat-note">Dollar figures: both definitions run on the TPC-DS sample (scale 0.01). Query counts: the Tier 5 test corpus.</p>
+    </div>
+    <div class="stack">
+      <h3>How the analyst drills down</h3>
+      <ol class="ladder">
+        <li><b>Answer</b><span>Every number in use, each labelled unruled, approved, not approved, or superseded.</span></li>
+        <li><b>Definition</b><span>What each number counts, in plain words.</span></li>
+        <li><b>Decision</b><span>Who decides, who decided, when, and why.</span></li>
+        <li><b>Evidence</b><span>Who uses each definition, how often, and how far apart the numbers are.</span></li>
+        <li><b>Data path</b><span>The tables and SQL. Only for someone who needs to check it.</span></li>
+      </ol>
+      <h3>Who decides</h3>
+      <p>Every measure needs a named owner, and naming them is the customer's first piece of work in a pilot. Analysts can challenge a definition. Only the owner rules, in their own words, under their own identity. The model never approves anything.</p>
+      <h3>When nobody decides</h3>
+      <p>If the owner does not respond, or two owners claim the same measure (finance and sales over revenue is the classic case), the fork goes to a tie-breaker the customer names. Until someone rules, every answer stays labelled unruled. Nothing becomes official by default.</p>
+      <h3>The label travels with the number</h3>
+      <p>Copied, exported or quoted, an unruled figure carries its label and the name of the person who decides. A contested number pasted into a deck without its label is the original failure again.</p>
+      <h3>What reaches Anthropic</h3>
+      <p>The question, the matching memory entries and the answers for that one question, under your Claude Enterprise agreement and recorded by hash. The rest of the memory, the ledger, the warehouse and the conformance checks stay inside your boundary.</p>
+      <p class="diagram-cap">Illustrative. Today the server runs locally over stdio and a contested measure returns its definitions without numbers. Returning every answer labelled, labels that travel, tie-breaker routing, a remote connector with SSO identity, and the disclosure ledger are designed, not built.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">09 · Architectural properties</div>
+    <div class="stack">
+      <h2>What an architecture review will ask, answered.</h2>
+    </div>
+  </div>
+  <div class="props">
+    <div class="prop"><span class="k">Audit</span><h3>Tamper-evident by construction</h3><p>Every ruling and memory entry is an immutable, content-addressed version in one hash-chained ledger. Making tampering impossible, not only evident, is a deployment choice: retention-locked object storage, customer-managed keys, anchored ledger heads.</p></div>
+    <div class="prop"><span class="k">Agent boundary</span><h3>Agents read; people decide</h3><p>The MCP server lets an agent search memory, list candidates and run approved investigations. Its tool contract requires that a decision come from the human the client acts for. Enforcing that with the SSO identity is designed, not built.</p></div>
+    <div class="prop"><span class="k">Integration</span><h3>Additive to the stack you have</h3><p>Today it reads SQL query history and exports an Apache Ossie model. Reading the drafts your warehouse generates and publishing rulings back to semantic layers and BI are designed, not built. No warehouse, BI or model replacement.</p></div>
+    <div class="prop"><span class="k">Ownership</span><h3>Lent to models, never trained in</h3><p>A model reads the relevant rulings for one question and keeps nothing. Swap models and the memory stays. Redact a ruling and no future answer can use it.</p></div>
+    <div class="prop"><span class="k">Disclosure</span><h3>You choose the exposure, and it is recorded</h3><p>Works with a hosted API, a private endpoint in your cloud account, or a model you run yourself. A disclosure ledger (designed) records which entries went to which client, by hash, never by content.</p></div>
+    <div class="prop"><span class="k">Conformance</span><h3>Checks agents you did not build</h3><p>Every query in the warehouse log, human or agent, can be compared to the ruling in force when it ran. No model call, nothing leaves. Designed; it needs execution-backed comparison before it ships.</p></div>
+    <div class="prop"><span class="k">Records management</span><h3>Deletion is a version</h3><p>Redaction scrubs content and keeps actor and timestamp. Writes carry a content-hash precondition, so two reviewers cannot silently overwrite each other.</p></div>
+    <div class="prop"><span class="k">Hosting</span><h3>Self-hosted, Apache-2.0</h3><p>Runs inside your boundary. The test suite runs offline with no API key; live model calls go through a spend ledger with an enforced ceiling.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">10 · Evidence to date</div>
+    <div class="stack">
+      <h2>Tested to fail, and reported when it does.</h2>
+      <p>All evidence is offline and deterministic, on TPC-H, TPC-DS and a synthetic order-to-cash world. Reproducible from a clean clone at the tag <code>paper-v0.1</code>.</p>
+    </div>
+  </div>
+  <div class="evidence">
+    <div class="ev"><span class="num">4 / 4</span><p>Tier 5 scenarios pass in a corpus where 10 of 13 queries use the wrong definition.</p></div>
+    <div class="ev"><span class="num">0</span><p>Answers given from frequency while a ruling was in force, and 0 presented as official while a measure was contested.</p></div>
+    <div class="ev"><span class="num">10</span><p>Previously invisible forks across 24 candidate definitions, surfaced on TPC-DS once the fork reached memory.</p></div>
+    <div class="ev"><span class="num warn">55%</span><p>Conflict-classifier precision (75% recall) on 26 labelled scenarios. Below its own goal; it over-flags scope filters.</p></div>
+  </div>
+  <div class="finding">
+    <span class="eyebrow">Finding</span>
+    <h3>Frequency wins silently when the review step only sees the merged view.</h3>
+    <p>While building the test, the induction stage merged rival definitions by intersecting their filters. The disputed filter was dropped, so only the majority's definition reached memory and there was nothing to rule on. Accept-or-reject review has the same weakness by design: it cannot recover a minority definition it was never shown.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">11 · The opportunity</div>
+    <div class="stack">
+      <h2>A pilot sized to one domain and a handful of owners.</h2>
+      <p>The measurement still missing is the one a buyer cares about: whether governed memory improves answers on real questions. It needs real query history and people with the authority to rule. Proving grounds are domains where small definitional errors cost visible money: fulfillment, revenue operations, supply chain.</p>
+    </div>
+  </div>
+  <div class="pilot">
+    <div class="step"><span class="k">Input</span><h3>One domain's query history</h3><p>Plus the drafts your warehouse already generates. Read-only access, inside your boundary.</p></div>
+    <div class="step"><span class="k">People</span><h3>A few named owners, about 20 rulings</h3><p>Owners rule only where a fork appears, as part of asking ordinary questions. Nobody pre-authors definitions.</p></div>
+    <div class="step"><span class="k">Measure</span><h3>Time to a trusted definition</h3><p>Before and after, plus whether reviewers accept the system's reasoning when they inspect it.</p></div>
+  </div>
+</section>
+
+<footer class="closing">
+  <p class="big">Your institutional memory stays yours.</p>
+  <p>Models borrow it one question at a time, and nothing is trained in. It is built so that every ruling can be revoked, every loan is recorded, and every agent's output is checked against your rules inside your own boundary, by code that sends nothing out. Revocation works today. The loan record and the conformance checks are designed, and they are next.</p>
+  <p class="repo">github.com/joshuawinter/analytical-memory · Apache-2.0 · technical report in <a href="https://github.com/joshuawinter/analytical-memory/blob/main/docs/PAPER.md">docs/PAPER.md</a></p>
+</footer>
+
+</div>

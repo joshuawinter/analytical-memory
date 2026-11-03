@@ -1099,6 +1099,65 @@ from a cached result is invisible to it. It inherits the single-aggregate
 contract; ratios and composites wait for the richer model. And none of this
 protects the underlying data, which remains the warehouse's access control.
 
+### Answers first; approval and confidence
+
+Decided 2026-11-03. Design only: changes the contested path, not built.
+
+**Answers first.** The analyst asks a business question and expects numbers,
+not SQL and not a refusal. Today a contested measure returns `NEEDS_REVIEW`
+with the rival definitions and no numbers. That is the right control and the
+wrong experience. The contested path should instead execute every rival
+definition and return each answer side by side, labelled, with the person who
+decides:
+
+```text
+Store sales, 2002
+  $8.65M  all ticket lines                        UNRULED  10 saved queries
+  $8.52M  excluding voided and giveaway tickets   UNRULED   3 saved queries
+  decides: finance data owner
+```
+
+(Figures: the two Tier 5 definitions executed on the local TPC-DS scale 0.01
+database.) The invariant changes from "no answer while contested" to "no
+answer presented as official while contested"; the popular definition gets
+no special placement. Tier 5's counter must be redefined to match before the
+change ships, and a label must travel with every number it is attached to,
+because a contested number pasted into a deck without its label is the
+original failure again.
+
+**The drill-down.** From the answer, the analyst navigates down, and only as
+far as needed: answer (every number, each labelled approved, not approved, or
+unruled) → definition in plain words → decision (who decides, who decided,
+when, why) → evidence (who uses each definition, how often, how far apart the
+numbers are) → data path (tables and SQL). SQL is the last step, for whoever
+has to check it. Every measure has a named owner; analysts may challenge,
+only the owner rules, and the model never approves. Naming owners is the
+customer's first piece of pilot work. When the owner does not respond, or two
+owners claim one measure, the fork routes to a tie-breaker the customer names;
+until someone rules, every answer stays `UNRULED` and nothing becomes official
+by default.
+
+**Approval is a decision; confidence is earned over time.** Two quantities,
+kept separate:
+
+- *Approval* is discrete, and every answer carries exactly one label:
+  `UNRULED`, `APPROVED`, `NOT_APPROVED`, or `SUPERSEDED`. A
+  named person decided, or nobody has. It is never a probability; a
+  probabilistic approval would let frequency back in, which is what the
+  design exists to stop.
+- *Confidence* in a standing ruling is continuous and changes over time. It
+  rises as later usage conforms and executed results validate, and falls as
+  the non-conformance rate rises, challenges accumulate, or the ruling ages
+  without review. Below a threshold the definition reopens as a fork and the
+  owner is asked again. Confidence decides when to ask; it never decides the
+  answer.
+
+Without ground truth nobody can measure the probability that a definition is
+correct. Confidence is therefore defined on what can be measured, agreement
+between usage and the ruling over time, and it depends on the conformance
+checks above. The thresholds, decay rate, and weighting are open questions
+for the pilot.
+
 ### MVP readiness
 
 The current implementation is reusable for the first MVP because it already

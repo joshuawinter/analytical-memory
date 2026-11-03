@@ -107,3 +107,10 @@ API ledger: $0.00 (no live call has ever been made). Check with
   execution-backed materiality is its prerequisite.
 - 2026-11-03: Posts dropped. `docs/POST.md` deleted (recoverable from git
   history at commit `03b448e`). The short form is now the EA-facing brief.
+- 2026-11-03: EA brief committed as `docs/BRIEF.html` (source of the
+  claude.ai artifact). Review fixes: unbuilt features marked designed;
+  one label set everywhere (UNRULED, APPROVED, NOT_APPROVED, SUPERSEDED);
+  store sales used consistently; owner naming, tie-breaker routing and
+  label travel added. ARCHITECTURE gains "Answers first; approval and
+  confidence" (design only; Tier 5's contested counter must be redefined
+  before it ships).
