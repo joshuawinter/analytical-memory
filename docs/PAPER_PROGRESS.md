@@ -106,4 +106,4 @@ API ledger: $0.00 (no live call has ever been made). Check with
   Conformance cannot ship on structural comparison (Tier 4 precision);
   execution-backed materiality is its prerequisite.
 - 2026-11-03: Posts dropped. `docs/POST.md` deleted (recoverable from git
-  history at `paper-v0.1`). The short form is now the EA-facing brief.
+  history at commit `03b448e`). The short form is now the EA-facing brief.
