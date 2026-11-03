@@ -16,7 +16,7 @@ Tier 3 is optional calibration, prepared but not run.
 | 3. Verify cited prior-art rows | **done** | 10 sources verified (SRC-035 to SRC-044); Airbnb, LinkedIn, Gartner unreachable, dropped from citations |
 | 4. License + README, clean-clone runnable | **done** | Apache-2.0; verified by a fresh clone from GitHub: 131 passed, 3 skipped; Tier 4 and 5 pass |
 | 5. Draft technical report | **draft v0.1** | `docs/PAPER.md`; the canonical, citable version |
-| 6. Post version for any medium | **draft v0.1** | `docs/POST.md`, ~2,000 words, inline links, no platform formatting; Josh to read |
+| 6. Post version for any medium | **dropped** | `docs/POST.md` deleted 2026-11-03; no posts. The EA brief is the short form |
 | Tier 3 preparation (not execution) | **done** | `--dry-run` on both scripts; client installed (anthropic 2.0.0); ~$0.06 typical for the full TPC-H run on sonnet-4-5 |
 
 ## Findings worth carrying into the paper
@@ -47,10 +47,8 @@ Tier 3 is optional calibration, prepared but not run.
 - **Copyright name.** LICENSE says "Copyright 2026 Josh Parsons", taken from
   the git author. Correct it if the legal name or an entity should appear.
 - **Venue.** Decided 2026-10-21: the repo holds the canonical report
-  (`PAPER.md`); a trimmed post (`POST.md`) is prepared for whichever medium
-  Josh picks. arXiv is deferred until there is a response worth following.
-- **Byline.** POST.md ends with a one-line bio and an independence note;
-  edit or remove.
+  (`PAPER.md`). Posts dropped 2026-11-03. arXiv is deferred until there is a
+  response worth following.
 - **Investor deck.** Still tracked in the repo and now public with the
   license. Keep, move, or delete.
 - **Tier 3.** Prepared, priced at cents, not run. Say so if an appendix run
@@ -107,3 +105,5 @@ API ledger: $0.00 (no live call has ever been made). Check with
   doubles as the drift re-check. PAPER Section 7 gets both as future work.
   Conformance cannot ship on structural comparison (Tier 4 precision);
   execution-backed materiality is its prerequisite.
+- 2026-11-03: Posts dropped. `docs/POST.md` deleted (recoverable from git
+  history at `paper-v0.1`). The short form is now the EA-facing brief.
