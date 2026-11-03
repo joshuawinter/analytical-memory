@@ -76,8 +76,9 @@ common; a reviewer clicks accept; the reason the other team had is lost.
 
 The gap matters more now than when Uber met it. When the analyst's surface
 was SQL, a definition sat in a `WHERE` clause a colleague could read and
-question, and that informal review was the control. In chat and agent
-interfaces the person asking never sees the SQL, so the control disappears at
+question, and that informal review was the control. Analysts now iterate
+with a model that writes dozens of queries in the time one used to take. The
+code stays visible, but informal review cannot keep pace, and this happens at
 the same time as induction makes the majority definition official and agents
 repeat it in every answer. Better models do not close this. Two definitions
 of a measure can both be valid SQL, and which one the organization chose is a
@@ -88,7 +89,10 @@ domain knowledge is supplied [SRC-038].
 
 What this calls for is a supervised correction loop. People label only the
 disputed cases, the memory keeps each label with its reason, and every later
-question reads it. Nothing is retrained. Whether answer accuracy improves as
+question reads it. Nothing is retrained. The analyst stays the investigator:
+each iteration carries the governing context next to the code and results,
+and a challenge that holds becomes a fork for the owner. Whether answer
+accuracy improves as
 rulings accumulate is a hypothesis this report does not test (Section 2).
 This report is about the loop that closes the gap, and about measuring
 whether it actually closes it.

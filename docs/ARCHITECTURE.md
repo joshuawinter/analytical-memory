@@ -1103,8 +1103,8 @@ protects the underlying data, which remains the warehouse's access control.
 
 Decided 2026-11-03. Design only: changes the contested path, not built.
 
-**Answers first.** The analyst asks a business question and expects numbers,
-not SQL and not a refusal. Today a contested measure returns `NEEDS_REVIEW`
+**Answers first.** The analyst asks a business question and expects answers,
+not a refusal. Today a contested measure returns `NEEDS_REVIEW`
 with the rival definitions and no numbers. That is the right control and the
 wrong experience. The contested path should instead execute every rival
 definition and return each answer side by side, labelled, with the person who
@@ -1125,12 +1125,18 @@ change ships, and a label must travel with every number it is attached to,
 because a contested number pasted into a deck without its label is the
 original failure again.
 
-**The drill-down.** From the answer, the analyst navigates down, and only as
-far as needed: answer (every number, each labelled approved, not approved, or
-unruled) → definition in plain words → decision (who decides, who decided,
-when, why) → evidence (who uses each definition, how often, how far apart the
-numbers are) → data path (tables and SQL). SQL is the last step, for whoever
-has to check it. Every measure has a named owner; analysts may challenge,
+**The analyst's loop.** The analyst is not replaced; working with the model,
+they iterate faster than any colleague could review, and the memory supplies
+the context that review used to. Every turn shows the answers (each
+labelled), the code that produced them, and the results, as a SQL client or
+notebook would, next to the governing context: the definition in plain words,
+who decided, when and why, and who uses each alternative. The loop is ask →
+see → understand → challenge (edit, test an assumption, rerun) → settle. When
+the code the analyst and model write departs from the approved definition,
+the memory says so in that turn; this is the conformance check of the
+previous section, run at authoring time rather than over the log. A
+challenge that holds becomes a fork for the owner, and the ruling feeds every
+later turn. Every measure has a named owner; analysts may challenge,
 only the owner rules, and the model never approves. Naming owners is the
 customer's first piece of pilot work. When the owner does not respond, or two
 owners claim one measure, the fork routes to a tie-breaker the customer names;

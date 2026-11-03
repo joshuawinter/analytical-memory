@@ -156,7 +156,9 @@ svg .t-on { fill: var(--surface); }
 .ladder { margin: 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 0; border-left: 2px solid var(--line); }
 .ladder li { counter-increment: step; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 10px; padding: 8px 0 8px 12px; position: relative; }
 .ladder li::before { content: counter(step); grid-row: span 2; font-family: var(--f-mono); font-size: 0.8rem; color: var(--accent); }
-.ladder li:last-child { opacity: 0.75; }
+.code { margin: 10px 0 0; padding: 10px 12px; background: var(--paper); border: 1px solid var(--line); font-family: var(--f-mono); font-size: 0.74rem; line-height: 1.55; overflow-x: auto; white-space: pre; }
+.code .c { color: var(--muted); }
+.code .r { color: var(--accent); font-weight: 500; }
 .ladder b { font-family: var(--f-display); font-stretch: 88%; }
 .ladder span { font-size: 0.9rem; color: var(--muted); }
 .conf-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 32px; margin-top: 40px; align-items: center; }
@@ -269,15 +271,16 @@ td small { display: block; color: var(--muted); font-size: 0.78rem; line-height:
   <div class="sec-head">
     <div class="eyebrow">02 · Why now</div>
     <div class="stack">
-      <h2>The analyst who used to catch the wrong filter is leaving the loop.</h2>
-      <p>When the analyst's tool was SQL, the definition sat in a <code>WHERE</code> clause a colleague could read and question. That informal review was the control. In chat, the person asking never sees the SQL, and the definition is buried in code nobody reads.</p>
+      <h2>Analysts now work at agent speed. Review did not come with them.</h2>
+      <p>When analysts wrote SQL by hand, a definition sat in a <code>WHERE</code> clause a colleague could read and question. That informal review was the control. Working with an LLM, an analyst runs dozens of queries in the time one used to take. The code is still on screen, but no colleague can keep pace with it, and the context that said which filter was right lives in people's heads.</p>
     </div>
   </div>
-  <div class="eras" role="table" aria-label="How the analyst's working surface changes from the SQL era to the chat era">
-    <div class="era-row era-head" role="row"><span role="columnheader"></span><span role="columnheader">SQL era</span><span role="columnheader">Chat and agent era</span></div>
-    <div class="era-row" role="row"><span class="era-k" role="rowheader">Who asks</span><span role="cell">An analyst who writes the query</span><span role="cell">A business user who types a question</span></div>
-    <div class="era-row" role="row"><span class="era-k" role="rowheader">Where the definition lives</span><span role="cell">In SQL a colleague can read</span><span role="cell">In generated SQL nobody reads</span></div>
-    <div class="era-row" role="row"><span class="era-k" role="rowheader">Who catches a wrong one</span><span role="cell">Peer review, the next analyst, the report owner</span><span role="cell"><strong class="ruling-word">Nobody, unless the decision is recorded</strong></span></div>
+  <div class="eras" role="table" aria-label="How the analyst's work changes from hand-written SQL to working with an LLM">
+    <div class="era-row era-head" role="row"><span role="columnheader"></span><span role="columnheader">Hand-written SQL</span><span role="columnheader">Analyst working with an LLM</span></div>
+    <div class="era-row" role="row"><span class="era-k" role="rowheader">Who writes the query</span><span role="cell">The analyst</span><span role="cell">The analyst and the model, turn by turn</span></div>
+    <div class="era-row" role="row"><span class="era-k" role="rowheader">Queries per question</span><span role="cell">A few, over hours</span><span role="cell">Dozens, in minutes</span></div>
+    <div class="era-row" role="row"><span class="era-k" role="rowheader">Where the context lives</span><span role="cell">Colleagues' heads, old dashboards</span><span role="cell">A memory the analyst and the model both read</span></div>
+    <div class="era-row" role="row"><span class="era-k" role="rowheader">Who catches a wrong definition</span><span role="cell">A colleague reading the query</span><span role="cell"><strong class="ruling-word">The analyst, shown where the code departs from the approved definition</strong></span></div>
     <div class="era-row" role="row"><span class="era-k" role="rowheader">Reach of one mistake</span><span role="cell">One dashboard</span><span role="cell">Every answer every agent gives</span></div>
     <div class="era-row" role="row"><span class="era-k" role="rowheader">Who drafts the semantic layer</span><span role="cell">A person, by hand</span><span role="cell">The warehouse, from the majority of past queries</span></div>
   </div>
@@ -287,8 +290,8 @@ td small { display: block; color: var(--muted); font-size: 0.78rem; line-height:
       <p>Two definitions of store sales can both be valid SQL. Which one your company chose is a decision, and decisions are not in the data. As models get better at writing SQL, a larger share of the remaining errors are about meaning. The benchmarks already show it: BEAVER, built on real enterprise warehouses, reports 10.8% accuracy for agentic frameworks, rising to 30.1% only when the domain knowledge is supplied.</p>
     </div>
     <div class="stack">
-      <h3>A supervised correction loop.</h3>
-      <p>People label only the disputed cases. The memory keeps each label with its reason, and every later question reads it. Nothing is retrained, so each correction applies at once, to every model, and can be revoked. The expected effect is that answer accuracy improves as rulings accumulate. That effect is the claim the pilot is designed to measure.</p>
+      <h3>The analyst, hypercharged.</h3>
+      <p>Every turn shows the answer, the code that produced it, the results and the governing context: which definition is approved, who decided and why. The analyst explores, challenges an assumption, edits and reruns. A challenge that holds becomes a question for the owner, and the owner's ruling, with its reason, is what every later turn reads. That is a supervised correction loop: people label the disputed cases and nothing is retrained. The expected effect is that answers improve as rulings accumulate, which is the claim the pilot is designed to measure.</p>
     </div>
   </div>
 </section>
@@ -513,8 +516,8 @@ td small { display: block; color: var(--muted); font-size: 0.78rem; line-height:
   <div class="sec-head">
     <div class="eyebrow">08 · In use, inside Claude Enterprise</div>
     <div class="stack">
-      <h2>Ask a question, get the answers, and see which one is approved.</h2>
-      <p>The analyst never has to see SQL. A contested measure comes back as every answer in use, each labelled, with the person who decides. The analyst drills from the number to the definition, the decision and the evidence. The domain owner rules in the same chat client, and from then on there is one approved answer.</p>
+      <h2>Ask, see the answers, the code and the context, then iterate.</h2>
+      <p>The analyst works the way they would in a SQL client or a notebook, with the model as a partner and the memory as context. A contested measure comes back as every answer in use, each labelled, with the code, the results and the person who decides. The analyst challenges, edits and reruns. A challenge that holds goes to the domain owner, who rules in the same chat client, and from then on there is one approved answer.</p>
     </div>
   </div>
   <div class="diagram">
@@ -548,7 +551,7 @@ td small { display: block; color: var(--muted); font-size: 0.78rem; line-height:
       <text x="652" y="308" text-anchor="end" font-size="10.5" class="t-mono" style="fill:var(--ruling)">disclosure logged</text>
       <path d="M380 332 H72" class="arrow" marker-end="url(#sq)"/><text x="88" y="326" font-size="12">$8.65M or $8.52M · finance decides</text>
 
-      <text x="14" y="368" class="t-mono" font-size="10.5" letter-spacing="1" style="fill:var(--ruling)">2 · THE ANALYST DRILLS IN; THE OWNER DECIDES</text>
+      <text x="14" y="368" class="t-mono" font-size="10.5" letter-spacing="1" style="fill:var(--ruling)">2 · THE ANALYST INVESTIGATES; THE OWNER DECIDES</text>
       <path d="M70 394 H378" class="arrow" marker-end="url(#sq)"/><text x="80" y="388" font-size="12">"Why do they differ?"</text>
       <path d="M380 424 H658" class="arrow" marker-end="url(#sq)"/><text x="392" y="418" font-size="11.5">evidence for each side</text>
       <path d="M660 454 H382" class="arrow" marker-end="url(#sq)"/><text x="392" y="448" font-size="11.5">usage, difference, open question</text>
@@ -586,7 +589,14 @@ td small { display: block; color: var(--muted); font-size: 0.78rem; line-height:
         <div class="chips"><span>Why do they differ?</span><span>Who uses each?</span><span>Ask the owner</span></div>
       </div>
       <div class="msg me">Why do they differ?</div>
-      <div class="msg ai">Voided and giveaway tickets still carry an amount. Ten saved queries count them and three exclude them. The gap is $134K, about 1.5%.</div>
+      <div class="msg ai">One filter. Voided and giveaway tickets still carry an amount; ten saved queries count them and three exclude them.
+        <pre class="code"><span class="c">-- all ticket lines</span>
+SELECT SUM(ss_net_paid) FROM store_sales ...  <span class="r">8,653,172.86</span>
+<span class="c">-- excluding voided and giveaway tickets</span>
+  ... AND ss_quantity &gt; 0                    <span class="r">8,519,196.49</span>
+<span class="c">-- difference: 133,976.37 (1.5%)</span></pre>
+        <div class="chips"><span>Edit and rerun</span><span>Break down by store</span><span>Challenge this</span></div>
+      </div>
       <div class="event">Finance data owner approves "Excluding voided and giveaway tickets" · reason recorded · January</div>
       <div class="msg me">Store sales in 2002?</div>
       <div class="msg ai">
@@ -597,13 +607,13 @@ td small { display: block; color: var(--muted); font-size: 0.78rem; line-height:
       <p class="chat-note">Dollar figures: both definitions run on the TPC-DS sample (scale 0.01). Query counts: the Tier 5 test corpus.</p>
     </div>
     <div class="stack">
-      <h3>How the analyst drills down</h3>
+      <h3>How the analyst works: a loop, not a lookup</h3>
       <ol class="ladder">
-        <li><b>Answer</b><span>Every number in use, each labelled unruled, approved, not approved, or superseded.</span></li>
-        <li><b>Definition</b><span>What each number counts, in plain words.</span></li>
-        <li><b>Decision</b><span>Who decides, who decided, when, and why.</span></li>
-        <li><b>Evidence</b><span>Who uses each definition, how often, and how far apart the numbers are.</span></li>
-        <li><b>Data path</b><span>The tables and SQL. Only for someone who needs to check it.</span></li>
+        <li><b>Ask</b><span>In plain language, as a question or a hypothesis.</span></li>
+        <li><b>See</b><span>Every answer in use, each labelled unruled, approved, not approved, or superseded, with the code and the results, as in a SQL client or notebook.</span></li>
+        <li><b>Understand</b><span>The definition in plain words, who decided, when and why, and who uses each alternative.</span></li>
+        <li><b>Challenge</b><span>Edit the code, test an assumption, rerun. Where the code departs from the approved definition, the memory says so.</span></li>
+        <li><b>Settle</b><span>A challenge that holds goes to the owner. The ruling and its reason feed every later turn. Back to Ask.</span></li>
       </ol>
       <h3>Who decides</h3>
       <p>Every measure needs a named owner, and naming them is the customer's first piece of work in a pilot. Analysts can challenge a definition. Only the owner rules, in their own words, under their own identity. The model never approves anything.</p>
@@ -613,7 +623,7 @@ td small { display: block; color: var(--muted); font-size: 0.78rem; line-height:
       <p>Copied, exported or quoted, an unruled figure carries its label and the name of the person who decides. A contested number pasted into a deck without its label is the original failure again.</p>
       <h3>What reaches Anthropic</h3>
       <p>The question, the matching memory entries and the answers for that one question, under your Claude Enterprise agreement and recorded by hash. The rest of the memory, the ledger, the warehouse and the conformance checks stay inside your boundary.</p>
-      <p class="diagram-cap">Illustrative. Today the server runs locally over stdio and a contested measure returns its definitions without numbers. Returning every answer labelled, labels that travel, tie-breaker routing, a remote connector with SSO identity, and the disclosure ledger are designed, not built.</p>
+      <p class="diagram-cap">Illustrative. Today the server runs locally over stdio and a contested measure returns its definitions without numbers. Returning every answer labelled, flagging departures from the approved definition while the analyst works, labels that travel, tie-breaker routing, a remote connector with SSO identity, and the disclosure ledger are designed, not built.</p>
     </div>
   </div>
 </section>

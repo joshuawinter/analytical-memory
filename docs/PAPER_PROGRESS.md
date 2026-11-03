@@ -114,3 +114,8 @@ API ledger: $0.00 (no live call has ever been made). Check with
   label travel added. ARCHITECTURE gains "Answers first; approval and
   confidence" (design only; Tier 5's contested counter must be redefined
   before it ships).
+- 2026-11-03: "Why now" reframed: the analyst is not removed but works at
+  agent speed, faster than informal review can follow; the memory supplies
+  the governing context in every iteration (answer, code, results, ruling).
+  Conformance gains a second use: flagging departures from the approved
+  definition while the analyst works, not only over the log.
